@@ -1,6 +1,6 @@
 UISP = avrdude -c usbtiny -P usb -p m168 -F
 
-COMPILE = avr-g++ -Wall -Os -Iusbdrv -I. -mmcu=atmega168 #-DDEBUG_LEVEL=1
+COMPILE = avr-g++ -Wall  -Iusbdrv -I. -mmcu=atmega168 #-DDEBUG_LEVEL=1
 
 OBJECTS = monitor.o mapping.o
 # OBJECTS = main.o

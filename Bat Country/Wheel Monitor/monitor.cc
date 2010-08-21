@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include <util/delay.h>
 #include <stdio.h>
 #include <string.h>
 #include "mapping.hh"
@@ -12,11 +13,16 @@ void configureTimer() {
 #define RX_BUF_SIZE 64
 char rxBuf[RX_BUF_SIZE];
 int rxOffset;
+volatile bool has_command = false;
 
 #define TX_BUF_SIZE 448
 char txBuf[TX_BUF_SIZE];
 
 char* pNextTx = NULL;
+
+// True if spin lever should be enabled; false
+// otherwise.
+volatile bool pass_trigger = true;
 
 void configureSerial() {
   // Setting to 9600 baud, 8N1, @ 16Mhz
@@ -46,6 +52,11 @@ void configurePins()
 {
   // Port C is input
   DDRC = 0x00;
+  // Port D: 2, 5, 6 are input
+  //         3, 4, 7 are output
+  DDRD |= _BV(3) | _BV(4) | _BV(7);
+  // Port B: 0 is output
+  DDRB |= _BV(0);
 
 }
 
@@ -75,9 +86,9 @@ private:
   volatile bool state;
   volatile bool changed;
 public:
-  Signal(bool start) : run(0),
-		       state(start),
-		       changed(false)
+  Signal(bool start = true) : run(0),
+			      state(start),
+			      changed(false)
   {}
 
   void update(const bool latest) {
@@ -176,11 +187,60 @@ void init()
   sei();
 }
 
+
+#define SPIN_BUTTON    0
+#define MAX_BET_BUTTON 1
+#define COIN_1_BUTTON  2
+#define COIN_2_BUTTON  3
+
+void setSpinButton(bool button) {
+    // Spin button is active low
+    PORTD = (PORTD & ~_BV(3)) | button?0:_BV(3);
+}
+
+bool getSpinButton() {
+    // Spin button is active low
+    return (PIND & _BV(2)) == 0;
+}
+
 int main( void )
 {
   init();
-  putString( (char*)"LUCKY.\nFUCKING.\nCHERRY.\n" );
+  char* pMsg = "*** LUCKY CHERRY ***\n";
+  char* pOk = "OK\n";
+  char* pError = "?\n";
+  uint8_t spin_trigger_cycles = 0;
+  putString( pMsg );
   while (1) {
+    bool spin_button = getSpinButton();
+    if (!pass_trigger) spin_button = false;
+    if (spin_trigger_cycles > 0) {
+      spin_trigger_cycles--;
+      spin_button = true;
+    }
+    setSpinButton(spin_button);
+
+    if (has_command) {
+      bool ok = false;
+      if (rxBuf[0] == 'H') {
+	ok = true;
+      } else if (rxBuf[0] == 'L') {
+	// lever operation
+	if (rxBuf[1] == 'p') {
+	  pass_trigger = true;
+	  ok = true;
+	} else if (rxBuf[1] == 'b') {
+	  pass_trigger = false;
+	  ok = true;
+	} else if (rxBuf[1] == 't') {
+	  spin_trigger_cycles = 100;
+	  ok = true;
+	}
+      }
+      putString( ok?pOk:pError );
+      has_command = false;
+    }
+    _delay_ms(1);
   }
   return 0;
 }
@@ -191,6 +251,7 @@ ISR(USART_RX_vect)
   if ( rxBuf[ rxOffset ] == '\n' ) {
     rxBuf[ rxOffset ] = '\0';
     rxOffset = 0;
+    has_command = true;
   } else {
     rxOffset = (rxOffset+1) % RX_BUF_SIZE;
   }
