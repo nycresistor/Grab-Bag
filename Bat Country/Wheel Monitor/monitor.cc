@@ -1,3 +1,4 @@
+#define F_CPU 16000000UL
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
@@ -5,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "mapping.hh"
-#define F_CPU 16000000UL
 
 void configureTimer() {
 }
@@ -18,7 +18,8 @@ volatile bool has_command = false;
 #define TX_BUF_SIZE 448
 char txBuf[TX_BUF_SIZE];
 
-char* pNextTx = NULL;
+volatile char* pStartTx = txBuf;
+volatile char* pEndTx = txBuf;
 
 // True if spin lever should be enabled; false
 // otherwise.
@@ -38,7 +39,12 @@ void configureSerial() {
 }
 
 void putString( char* pStr ) {
-  pNextTx = pStr;
+  do {
+    *(pEndTx++) = *(pStr++);
+    if (pEndTx >= (txBuf + TX_BUF_SIZE)) {
+      pEndTx = txBuf;
+    }
+  } while (*pStr != '\0');
   UCSR0B |= (1 << UDRIE0);
 }
 
@@ -110,7 +116,7 @@ public:
   bool getChanged() { return changed; }
 };
 
-#define IDLE_COUNT 500
+#define IDLE_COUNT 600
 
 class Wheel {
 private:
@@ -130,7 +136,7 @@ public:
     opto(true),
     opto_triggered_flag(false),
     count(0),
-    idle_count(0)
+    idle_count(IDLE_COUNT)
   {}
 
   const uint8_t getCount() const { 
@@ -203,6 +209,34 @@ bool getSpinButton() {
     return (PIND & _BV(2)) == 0;
 }
 
+
+bool getCS1() {
+    //  button is active low
+    return (PIND & _BV(5)) == 0;
+}
+
+bool getCS2() {
+    //  button is active low
+    return (PIND & _BV(6)) == 0;
+}
+
+void setCS1(bool value) {
+  //  button is active low
+  PORTD = (PORTD & _BV(7)) | value?0:_BV(7);
+}
+
+void setCS2(bool value) {
+  //  button is active low
+  PORTB = (PORTB & _BV(0)) | value?0:_BV(0);
+}
+
+enum {
+  CS_WAIT,
+  CS_TRIGGER_1,
+  CS_TRIGGER_BOTH,
+  CS_TRIGGER_2
+};
+
 int main( void )
 {
   init();
@@ -210,6 +244,9 @@ int main( void )
   char* pOk = "OK\n";
   char* pError = "?\n";
   uint8_t spin_trigger_cycles = 0;
+  uint8_t cs_trigger_state = CS_WAIT;
+  uint8_t cs_output_state = CS_WAIT;
+  int8_t cs_output_waits = 0;
   putString( pMsg );
   while (1) {
     bool spin_button = getSpinButton();
@@ -220,9 +257,71 @@ int main( void )
     }
     setSpinButton(spin_button);
 
+    // Check coinslot
+    switch (cs_trigger_state) {
+    case CS_WAIT:
+      if (getCS1()) {
+	cs_trigger_state = CS_TRIGGER_1;
+      }
+      break;
+    case CS_TRIGGER_1:
+      if (!getCS1()) {
+	cs_trigger_state = CS_WAIT;
+      } else if (getCS2()) {
+	cs_trigger_state = CS_TRIGGER_BOTH;
+      }
+      break;
+    case CS_TRIGGER_BOTH:
+      if (!getCS2()) {
+	cs_trigger_state = CS_WAIT;
+      } else if (!getCS1()) {
+	cs_trigger_state = CS_TRIGGER_2;
+      }
+      break;
+    case CS_TRIGGER_2:
+      if (!getCS2()) {
+	cs_trigger_state = CS_WAIT;
+	putString("COIN");
+      } 
+    }
+
+    switch (cs_output_state) {
+    case CS_WAIT:
+      break;
+    case CS_TRIGGER_1:
+      cs_output_waits--;
+      if (cs_output_waits <= 0) {
+	cs_output_state = CS_TRIGGER_BOTH;
+	cs_output_waits = 12;
+	setCS2(true);
+      }
+      break;
+    case CS_TRIGGER_BOTH:
+      cs_output_waits--;
+      if (cs_output_waits <= 0) {
+	cs_output_state = CS_TRIGGER_2;
+	cs_output_waits = 3;
+	setCS1(false);
+      }
+      break;
+    case CS_TRIGGER_2:
+      cs_output_waits--;
+      if (cs_output_waits <= 0) {
+	cs_output_state = CS_WAIT;
+	cs_output_waits = 0;
+	setCS2(false);
+      }
+      break;
+    }
+
     if (has_command) {
       bool ok = false;
       if (rxBuf[0] == 'H') {
+	ok = true;
+      } else if (rxBuf[0] == 'C') {
+	cs_output_state = CS_TRIGGER_1;
+	cs_output_waits = 5;
+	setCS1(true);
 	ok = true;
       } else if (rxBuf[0] == 'L') {
 	// lever operation
@@ -259,11 +358,14 @@ ISR(USART_RX_vect)
 
 ISR(USART_UDRE_vect)
 {
-  if (pNextTx == 0 || *pNextTx == '\0') {
+  if (pEndTx == pStartTx) {
     UCSR0B &= ~(1 << UDRIE0);
   } else {
-    UDR0=*pNextTx;
-    pNextTx++;
+    UDR0=*pStartTx;
+    pStartTx++;
+    if (pStartTx >= (txBuf + TX_BUF_SIZE)) {
+      pStartTx = txBuf;
+    }
   }
 }
 
@@ -278,7 +380,7 @@ ISR(TIMER0_COMPA_vect)
 		   right.isStopped());
     if (!is_running) {
       char buf[30];
-      sprintf(buf,"SPIN %d %d %d\n",left.getCount(),
+      sprintf(buf,"SPIN RESULT %d %d %d\n",left.getCount(),
 	      center.getCount(),
 	      right.getCount());
       putString( buf );
@@ -287,5 +389,8 @@ ISR(TIMER0_COMPA_vect)
     is_running = (!left.isStopped() ||
 		  !center.isStopped() ||
 		  !right.isStopped());
+    if (is_running) {
+      putString((char*)"START SPIN\n");
+    }
   }
 }
