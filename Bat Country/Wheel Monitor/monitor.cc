@@ -48,11 +48,26 @@ void putString( char* pStr ) {
   UCSR0B |= (1 << UDRIE0);
 }
 
-/// Commands are of the form "[LTS][0-4]XX", where XX is the hex position
-void processCommand()
-{
+bool getCS1() {
+    //  button is active low
+    return (PIND & _BV(5)) == 0;
 }
 
+bool getCS2() {
+    //  button is active low
+    return (PIND & _BV(6)) == 0;
+}
+
+void setCS1(bool value) {
+  //  button is active low
+  const uint8_t bit = _BV(7);
+  PORTD = (PORTD & (~bit)) | (value?0:bit);
+}
+
+void setCS2(bool value) {
+  //  button is active low
+  PORTB = (PORTB & ~_BV(0)) | value?0:_BV(0);
+}
 
 void configurePins()
 {
@@ -63,6 +78,8 @@ void configurePins()
   DDRD |= _BV(3) | _BV(4) | _BV(7);
   // Port B: 0 is output
   DDRB |= _BV(0);
+  setCS1(false);
+  setCS2(false);
 
 }
 
@@ -201,7 +218,8 @@ void init()
 
 void setSpinButton(bool button) {
     // Spin button is active low
-    PORTD = (PORTD & ~_BV(3)) | button?0:_BV(3);
+  const uint8_t bit = _BV(3);
+  PORTD = (PORTD & (~bit)) | (button?0:bit);
 }
 
 bool getSpinButton() {
@@ -209,26 +227,6 @@ bool getSpinButton() {
     return (PIND & _BV(2)) == 0;
 }
 
-
-bool getCS1() {
-    //  button is active low
-    return (PIND & _BV(5)) == 0;
-}
-
-bool getCS2() {
-    //  button is active low
-    return (PIND & _BV(6)) == 0;
-}
-
-void setCS1(bool value) {
-  //  button is active low
-  PORTD = (PORTD & _BV(7)) | value?0:_BV(7);
-}
-
-void setCS2(bool value) {
-  //  button is active low
-  PORTB = (PORTB & _BV(0)) | value?0:_BV(0);
-}
 
 enum {
   CS_WAIT,
