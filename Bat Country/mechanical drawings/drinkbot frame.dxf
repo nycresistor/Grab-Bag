@@ -59,7 +59,7 @@ $DIMTXT
   9
 $CLAYER
   8
-support vane A D
+guidelines
   0
 ENDSEC
   0
@@ -6215,6 +6215,34 @@ ByLayer
  40
 10.7500000000000071
   0
+INSERT
+  5
+FC
+100
+AcDbEntity
+100
+AcDbBlockReference
+  8
+guidelines
+ 62
+256
+370
+-1
+  6
+ByLayer
+  2
+solenoid_valve
+ 10
+640.0
+ 20
+660.0
+ 30
+0.0
+ 44
+1.0
+ 45
+1.0
+  0
 ENDSEC
   0
 SECTION
@@ -6253,7 +6281,7 @@ E
   3
 AcDbVariableDictionary
 350
-FC
+FD
   0
 DICTIONARY
   5
@@ -6717,7 +6745,7 @@ Layout2
   0
 DICTIONARY
   5
-FC
+FD
 100
 AcDbDictionary
 281
@@ -6725,15 +6753,15 @@ AcDbDictionary
   3
 DIMASSOC
 350
-FE
+FF
   3
 HIDETEXT
 350
-FD
+FE
   0
 DICTIONARYVAR
   5
-FD
+FE
 100
 DictionaryVariables
 280
@@ -6743,7 +6771,7 @@ DictionaryVariables
   0
 DICTIONARYVAR
   5
-FE
+FF
 100
 DictionaryVariables
 280
