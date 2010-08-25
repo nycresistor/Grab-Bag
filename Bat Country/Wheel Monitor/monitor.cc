@@ -133,7 +133,8 @@ public:
   bool getChanged() { return changed; }
 };
 
-#define IDLE_COUNT 600
+#define IDLE_COUNT 300
+#define INITIAL_COUNT 1600
 
 class Wheel {
 private:
@@ -368,26 +369,50 @@ ISR(USART_UDRE_vect)
 }
 
 volatile bool is_running = false;
+volatile bool left_running = false;
+volatile bool center_running = false;
+volatile bool right_running = false;
+volatile uint16_t initial_delay = 0;
 
 ISR(TIMER0_COMPA_vect)
 {
   update();
   if (is_running) {
-    is_running = !(left.isStopped() && 
-		   center.isStopped() &&
-		   right.isStopped());
-    if (!is_running) {
+    if (initial_delay < INITIAL_COUNT) { initial_delay++; }
+    else {
       char buf[30];
-      sprintf(buf,"SPIN RESULT %d %d %d\n",left.getCount(),
-	      center.getCount(),
-	      right.getCount());
-      putString( buf );
+      if (left.isStopped() && left_running) {
+	left_running = false;
+	sprintf(buf,"WHEEL L %d\n",left.getCount());
+	putString(buf);
+      }
+      if (center.isStopped() && center_running) {
+	center_running = false;
+	sprintf(buf,"WHEEL C %d\n",center.getCount());
+	putString(buf);
+      }
+      if (right.isStopped() && right_running) {
+	right_running = false;
+	sprintf(buf,"WHEEL R %d\n",right.getCount());
+	putString(buf);
+      }
+      is_running = !(left.isStopped() && 
+		     center.isStopped() &&
+		     right.isStopped());
+      if (!is_running) {
+	sprintf(buf,"SPIN RESULT %d %d %d\n",left.getCount(),
+		center.getCount(),
+		right.getCount());
+	putString( buf );
+      }
     }
   } else {
     is_running = (!left.isStopped() ||
 		  !center.isStopped() ||
 		  !right.isStopped());
     if (is_running) {
+      initial_delay = 0;
+      left_running = right_running = center_running = true;
       putString((char*)"START SPIN\n");
     }
   }
