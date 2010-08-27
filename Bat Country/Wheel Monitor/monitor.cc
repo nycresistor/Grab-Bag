@@ -280,7 +280,7 @@ int main( void )
     case CS_TRIGGER_2:
       if (!getCS2()) {
 	cs_trigger_state = CS_WAIT;
-	putString("COIN");
+	putString("COIN\n");
       } 
     }
 
