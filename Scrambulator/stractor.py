@@ -25,8 +25,8 @@ def marker_iter(f):
         if b == START_MARKER[scan_idx]:
             scan_idx = scan_idx + 1
             if scan_idx == len(START_MARKER):
-                yield f.tell()-3
                 scan_idx = 0
+                yield f.tell()-3
         elif b == 0:
             # handle, say, 00 00 00 01
             pass
@@ -38,12 +38,14 @@ def scan_file(path):
     scan_idx = 0
     f = open(path,"rb")
     l = []
-    cur = None
+    cur = (-1,0)
     for pos in marker_iter(f):
+        #print "Got pos",hex(pos)
         code = ord(f.read(1))
         #print "Code ",hex(code)
-        if code >= 0x01 and code <= 0xaf:
-            # slice, continue
+        #if (code >= 0x01 and code <= 0xaf) or code == 0xb5:
+        if code != END_CODE and code != PICTURE_CODE:
+            # slice or extension, continue
             continue
         elif cur != None:
             # other code, end frame
