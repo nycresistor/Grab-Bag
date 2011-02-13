@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import sys
+
 START_MARKER = [0x00,0x00,0x01]
 
 END_CODE = 0xb9
@@ -46,6 +48,7 @@ def scan_file(path):
         elif cur != None:
             # other code, end frame
             curlen = pos - cur[1]
+            print hex(pos), hex(cur[1]), hex(curlen)
             l.append((cur[0],cur[1],curlen))
             cur = None
         # Handle non-slice codes
@@ -60,9 +63,51 @@ def scan_file(path):
     # nah, we only get end codes in packed formats.
     return l
 
-l = scan_file("out.raw")
-print len(l), "frames scanned."
-i = reduce(lambda x,y:x+int(y[0]==I_FRAME),l,0)
-print i,"I-frames found."
+paths=sys.argv[1:]
+markers = []
+for path in paths:
+    print "Scanning file", path, "..."
+    l = scan_file(path)
+    markers.append(l)
+    print len(l), "frames scanned."
+    i = reduce(lambda x,y:x+int(y[0]==I_FRAME),l,0)
+    print i,"I-frames found."
 
+if len(paths) == 1:
+    print l
 
+def copyChunk(tag,src,dest):
+    src.seek(tag[1])
+    data = src.read(tag[2])
+    dest.write(data)
+
+if len(paths) == 2:
+    outpath = "puitn.raw"
+    print "Scrambulating into",outpath
+    outf = open(outpath,"wb")
+    files = map(lambda x:open(x,"rb"),paths)
+    pSrcIdx = 0
+    iSrcIdx = 0
+    # 0 is progressive source; 1 is i-frame source
+    while True:
+        while markers[0][pSrcIdx][0] != I_FRAME:
+            print "Copying non-Iframe chunk",pSrcIdx,"size",markers[0][pSrcIdx][2]
+            copyChunk(markers[0][pSrcIdx],files[0],outf)
+            pSrcIdx = pSrcIdx+1
+            if pSrcIdx >= len(markers[0]):
+                break
+        # skip I-frame
+        pSrcIdx = pSrcIdx+1
+        if pSrcIdx >= len(markers[0]):
+            break
+        # skip non-I-frames
+        while markers[1][iSrcIdx][0] != I_FRAME:
+            iSrcIdx = (iSrcIdx + 1) % len(markers[1])
+        # copy I-frame
+        print "Copying Iframe chunk",iSrcIdx,"size",markers[0][iSrcIdx][2]
+        copyChunk(markers[1][iSrcIdx],files[1],outf)
+        # pass frame
+        iSrcIdx = (iSrcIdx + 1) % len(markers[1])
+        
+        
+        
