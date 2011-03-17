@@ -1,0 +1,15 @@
+$def with (logs)
+
+<table>
+    <tr>
+        <th>Recent Logs:</th>
+        <th></th>
+    </tr>
+$for log in logs:
+    <tr>
+    <td>$log.time</td> <td>$log.text</td>
+
+    </tr>    
+</table>  
+
+

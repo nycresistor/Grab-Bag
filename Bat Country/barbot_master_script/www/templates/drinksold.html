@@ -1,0 +1,28 @@
+$def with (drinks, custom)
+
+
+<table>
+
+	<h4>Waiting Drinks</h4>
+	<OL>
+		$for order in custom:
+			<li>$order.name</li>	
+	</ol>
+	
+	<tr>
+		<th>Drinklist:</th>
+		<th></th>
+	</OL>
+    
+$for drink in drinks:
+    <tr>
+    	<td>$drink.id</td> 
+    	<td><form action="/order/$drink.id" method="post">
+  			<input type="submit" value="Order"/>
+        	</form>
+    	</td>
+    	<td>$drink.name</td>
+    </tr>    
+</table>  
+
+

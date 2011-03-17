@@ -1,0 +1,46 @@
+$def with (drinks, custom)
+
+
+<!--
+<script type="application/x-javascript" src="http://10.0.1.2:1840/ibug.js"></script>
+-->
+</head>
+
+<body>
+    <div class="toolbar">
+        <h1 id="pageTitle"></h1>
+        <a id="backButton" class="button" href="#"></a>
+        <a class="button" href="#searchForm">Search</a>
+    </div>
+    
+    <ul id="home" title="Lucky Cherry" selected="true">
+        <li class="group">Waiting Orders</li>
+        $for order in custom:
+        	<li>$order.name</li>
+    
+    
+        <li class="group">Drink List</li>
+        $for drink in drinks:
+        	<li><a href="/order?order=$drink.id">$drink.id  $drink.name</a></li>
+    
+    </ul>
+    
+    
+    
+    <ul id="waiting" title="Waiting Orders">
+    
+    $for order in custom:
+        <li>$order.name</li>
+    </ul>
+    
+    <ul id="drinklist" title="Drink List">
+    $for drink in drinks:
+        <li><a href="/order?order=$drink.id">$drink.id  $drink.name</a></li>
+    
+    </ul>
+   
+    
+   
+    </div>
+</body>
+</html>
