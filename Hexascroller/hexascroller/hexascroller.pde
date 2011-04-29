@@ -1,10 +1,19 @@
-const static int clock_pin = 2;
-const static int data_pin = 3;
+// CLOCK PIN: A0 (22)
+// DATA 1: A1 (23)
+// DATA 2: A2 (24)
+// DATA 3: A3 (25)
 
-const static int columns = 60;
-const static int modules = 6;
+// ROW 0: E4 (2)
+// ROW 1: E5 (3)
+// ROW 2: E3 (5)
+// ROW 3: H3 (6)
+// ROW 4: H4 (7)
+// ROW 5: H5 (8)
+// ROW 6: H6 (9)
+
+const static int columns = 120;
+const static int modules = 3;
 const static int rows = 7;
-const static int row_pin[rows] = { 7,8,9,10,11,12,13 };
 
 static int active_row = -1;
 
@@ -64,41 +73,54 @@ public:
 
 static Bitmap b;
 
-void rowOff() {
-  if (active_row >= 0) {
-    digitalWrite(row_pin[active_row],LOW);
-    active_row = -1;
-  }
+inline void rowOff() {
+  PORTE &= ~(_BV(4) | _BV(5) | _BV(3));
+  PORTH &= ~(_BV(3) | _BV(4) | _BV(5) | _BV(6));
 }
 
-void rowOn(int row) {
-  active_row = row;
-  if (active_row >= 0) { 
-    digitalWrite(row_pin[active_row],HIGH);
+inline void rowOn(int row) {
+  // ROW 0: E4 (2)
+  // ROW 1: E5 (3)
+  // ROW 2: E3 (5)
+  // ROW 3: H3 (6)
+  // ROW 4: H4 (7)
+  // ROW 5: H5 (8)
+  // ROW 6: H6 (9)
+  switch( row ) {
+    case 0: PORTE |= _BV(4); break;
+    case 1: PORTE |= _BV(5); break;
+    case 2: PORTE |= _BV(3); break;
+    case 3: PORTH |= _BV(3); break;
+    case 4: PORTH |= _BV(4); break;
+    case 5: PORTH |= _BV(5); break;
+    case 6: PORTH |= _BV(6); break;
   }
-}
-
-void shiftIn(bool bit) {
-  digitalWrite(data_pin, bit?HIGH:LOW);
-  digitalWrite(clock_pin, LOW);
-  digitalWrite(clock_pin, HIGH);
 }
 
 void setup() {
   b.erase();
-  b.writeStr("FUCK YOU",5,0);
+  b.writeStr("SPANDEX AND",5,0);
   b.flip();
   b.erase();
-  b.writeStr("GAAAH",5,0);
+  b.writeStr("HOT DOGS",5,0);
   //b.flip();
-  pinMode(data_pin, OUTPUT);
-  digitalWrite(data_pin, HIGH);
-  pinMode(clock_pin, OUTPUT);
-  digitalWrite(clock_pin, HIGH);
-  for (int i =0; i < rows; i++) {
-    pinMode(row_pin[i], OUTPUT);
-    digitalWrite(row_pin[i], HIGH);
-  }
+  // CLOCK PIN: A0
+  // DATA 1: A1
+  // DATA 2: A2
+  // DATA 3: A3
+  DDRA = 0x0f;
+  PORTA = 0x0f;
+// ROW 0: E4 (2)
+// ROW 1: E5 (4)
+// ROW 2: E3 (5)
+// ROW 3: H3 (6)
+// ROW 4: H4 (7)
+// ROW 5: H5 (8)
+// ROW 6: H6 (9)
+  DDRE |= _BV(4) | _BV(5) | _BV(3);
+  DDRH |= _BV(3) | _BV(4) | _BV(5) | _BV(6);
+  PORTE &= ~(_BV(4) | _BV(5) | _BV(3));
+  PORTH &= ~(_BV(3) | _BV(4) | _BV(5) | _BV(6));
   // 2ms per row/interrupt
   // clock: 16MHz
   // target: 500Hz
@@ -107,17 +129,23 @@ void setup() {
   // CS[2:0] = 0b011
   // WGM[3:0] = 0b0100 CTC mode (top is OCR3A)
   
-  OCR3A = 500;
   TCCR3A = 0b00000000;
   TCCR3B = 0b00001011;
   TIMSK3 = _BV(OCIE3A);
+  OCR3A = 400;
   
+  delay(500);
 }
 
 static unsigned int curRow = 0;
 
+static int xoff = 0;
 void loop() {
-  delay(1000);
+  delay(30);
+  b.erase();
+  b.writeStr("HOT DOGS",xoff,0);
+  xoff++;
+  xoff = xoff % 120;
   b.flip();
 }
 
@@ -127,16 +155,24 @@ ISR(TIMER3_COMPA_vect)
   uint8_t mask = 1 << (7-row);
   uint8_t* p = b.getDisplay();
   rowOff();
-  for (int i = 0; i < 60; i++) {
+  for (int i = 0; i < columns; i++) {
     // clock is 2, data is 3
     // 2 == E4, 3 == E5 on the mega
-    if ( (p[60-i] & mask) != 0 ) {
-      PORTE = _BV(4) | _BV(5);
-      PORTE = _BV(5);
+    if ( (p[(columns-1)-i] & mask) != 0 ) {
+      //PORTE = _BV(4);
+      //PORTA = 1;
+      //PORTE = 0;
+      PORTA = _BV(0) | _BV(1);
+      PORTA = _BV(1);
     } else {
-      PORTE = _BV(4);
-      PORTE = 0;
+      //PORTE = _BV(4);
+      //PORTA = 0;
+      //PORTE = 0;
+      PORTA = _BV(0);
+      PORTA = 0;
     }
+
+    PORTA |= _BV(0);
     //PORTE = _BV(4);
   //    digitalWrite(clock_pin, LOW);
   //  digitalWrite(clock_pin, HIGH);
