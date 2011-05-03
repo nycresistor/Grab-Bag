@@ -139,6 +139,53 @@ def writeSpecials(drink, oob):
         print "! ! ! ! ! ! ! ! COULD NOT CONNECT TO LCD ! ! ! ! ! ! ! !"
     time.sleep(5)
 
+def writeSpecials2(drink, oob)
+	if len(oob) > 3:
+    	#need the whole screen
+		
+        lcd.write(chr(0xFE) + chr(0x48))
+		lcd.write(drink.center(20))
+        lcd.write(chr(10))
+        lcd.write("ADD:".center(20))
+        lcd.write(chr(10))
+        time.sleep(4)
+
+		clearLCD()
+
+		for inst in oob:
+        	lcd.write(str(inst))
+            if x < len(oob)-1 and len(str(inst)) < 20:
+            	lcd.write(Chr(10))
+                x+=1
+        
+	elif len(oob) > 2:
+        #can display name + 'add'
+		
+		drinkLine = ""	
+		if len(drink) <= 15:
+			for x in range(0, 20):
+				if x > 16:
+					drinkLine[x] = "ADD:"[x-17]
+				else: 
+					drinkLine[x] = drink.ljust(20)[x]
+		
+	elif len(oob) <= 2:
+        #can display name, 'add', and instructions
+
+        lcd.write(chr(0xFE) + chr(0x48))
+        lcd.write(drink)
+        lcd.write(chr(10))
+
+        lcd.write(chr(0xFE) + chr(0x48))
+        lcd.write("Please Add:")
+        lcd.write(chr(10)) 
+		
+        for inst in oob:
+            lcd.write(str(inst))
+            lcd.write(chr(10))
+	
+    time.sleep(5)
+    
 def log(text):
     sql = "insert into logs values (NULL, %s, '%s')" % (time.time(), text)
     c.execute(sql)
