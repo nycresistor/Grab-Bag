@@ -1,5 +1,5 @@
 #! /bin/python
-import shlex, sys, os, time, subprocess, serial, sqlite3, random, json, multiprocessing, subprocess, math, socket
+import shlex, sys, os, time, subprocess, serial, sqlite3, random, json, multiprocessing, subprocess, math, socket, twitter
 
 #Database
 conn = sqlite3.connect('/var/www/barbot.sqlite')
@@ -24,12 +24,11 @@ replay1 = [0, 4, 7, 11, 14, 18]
 replay2 = [1, 6, 10, 14, 18]
 replay3 = [0, 4, 8, 12, 16]
 
-threads = []
+try:
+	api = twitter.Api(consumer_key='', consumer_secret='', access_token_key='', access_token_secret='')
+except:
+	print "no twitter"
 
-q=0
-r=0
-s=0
-        
 def killThreads():
     for thread in threads:
         if not thread.is_alive():
@@ -93,6 +92,12 @@ def makeDrink(args=None):
     writeSpecials(str(drinkname), oob)    
     
     log("Mixing drink: " + drinkname + " (%s)"%(str(drinknum)))
+    
+    x = random.randint(0, len(twitterSayings)-1)
+    try:
+        api.PostUpdate("I just mixed a '%s'! %s" % (drinkname, twitterSayings[x]))
+    except:
+        pass
 
 def writeSpecials(drink, oob):
     x = 0
