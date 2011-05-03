@@ -25,9 +25,9 @@ replay2 = [1, 6, 10, 14, 18]
 replay3 = [0, 4, 8, 12, 16]
 
 try:
-	api = twitter.Api(consumer_key='', consumer_secret='', access_token_key='', access_token_secret='')
+    api = twitter.Api(consumer_key='', consumer_secret='', access_token_key='', access_token_secret='')
 except:
-	print "no twitter"
+    print "no twitter"
 
 def killThreads():
     for thread in threads:
@@ -145,36 +145,36 @@ def writeSpecials(drink, oob):
     time.sleep(5)
 
 def writeSpecials2(drink, oob)
-	if len(oob) > 3:
-    	#need the whole screen
-		
+    if len(oob) > 3:
+        #need the whole screen
+        
         lcd.write(chr(0xFE) + chr(0x48))
-		lcd.write(drink.center(20))
+        lcd.write(drink.center(20))
         lcd.write(chr(10))
         lcd.write("ADD:".center(20))
         lcd.write(chr(10))
         time.sleep(4)
 
-		clearLCD()
+        clearLCD()
 
-		for inst in oob:
-        	lcd.write(str(inst))
+        for inst in oob:
+            lcd.write(str(inst))
             if x < len(oob)-1 and len(str(inst)) < 20:
-            	lcd.write(Chr(10))
+                lcd.write(Chr(10))
                 x+=1
         
-	elif len(oob) > 2:
+    elif len(oob) > 2:
         #can display name + 'add'
-		
-		drinkLine = ""	
-		if len(drink) <= 15:
-			for x in range(0, 20):
-				if x > 16:
-					drinkLine[x] = "ADD:"[x-17]
-				else: 
-					drinkLine[x] = drink.ljust(20)[x]
-		
-	elif len(oob) <= 2:
+        
+        drinkLine = ""  
+        if len(drink) <= 15:
+            for x in range(0, 20):
+                if x > 16:
+                    drinkLine[x] = "ADD:"[x-17]
+                else: 
+                    drinkLine[x] = drink.ljust(20)[x]
+        
+    elif len(oob) <= 2:
         #can display name, 'add', and instructions
 
         lcd.write(chr(0xFE) + chr(0x48))
@@ -184,11 +184,11 @@ def writeSpecials2(drink, oob)
         lcd.write(chr(0xFE) + chr(0x48))
         lcd.write("Please Add:")
         lcd.write(chr(10)) 
-		
+        
         for inst in oob:
             lcd.write(str(inst))
             lcd.write(chr(10))
-	
+    
     time.sleep(5)
     
 def log(text):
@@ -285,9 +285,9 @@ def play():
             lines = buffer.split('\n')
             received = lines[-2]
             if (received == last_received):
-            	continue
+                continue
             else:
-            	last_received = received
+                last_received = received
             buffer = lines[-1]
             print " = = = = = CMD Received: " + last_received + " = = = = ="
             
