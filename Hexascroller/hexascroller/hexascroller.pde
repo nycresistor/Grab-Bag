@@ -13,6 +13,7 @@
 // ROW 4: H4 (7)
 // ROW 5: H5 (8)
 // ROW 6: H6 (9)
+#define GREETING "WELCOME TO THE INTERACTIVE PARTY!  TWITTER TO #NYCR TO MESSAGE.  "
 
 const static int columns = 120;
 const static int modules = 3;
@@ -52,6 +53,7 @@ public:
   int writeChar(char c, int x, int y, bool wrap = true) {
     int coff = (int)c * 8;
     uint8_t row = pgm_read_byte(charData+coff);
+    if (c == ' ') return x+2;
     if (row == 0) {
       return x;
     }
@@ -128,10 +130,8 @@ inline void rowOn(int row) {
 
 void setup() {
   b.erase();
-  b.writeStr("SPANDEX AND",5,0);
   b.flip();
   b.erase();
-  b.writeStr("HOT DOGS",5,0);
   //b.flip();
   // CLOCK PIN: A0
   // DATA 1: A1
@@ -163,36 +163,70 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 300;
   
+  Serial.begin(9600);
+  Serial.println("Okey-doke, here we go.");
+
   // Set up xbee
   Serial2.begin(9600);
   delay(1100);
-  send("+++");
+  Serial2.print("+++");
   delay(1100);
-  send("ATPL2\r");
-  delay(30);
-  _delay_ms(30);
-  send("ATMY1\r");
-  delay(30);
-  send("ATDL2\r");
-  delay(30);
-  send("ATSM0\r");
-  delay(30);
-  send("ATCN\r");
-  delay(30);
+  Serial2.flush();
+  Serial2.print("ATPL2\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATMY1\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATDL2\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATSM0\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATCN\r");
+  delay(1100);
+
+  Serial2.flush();
+  Serial.println("XBEE up.");
 
   delay(100);
 }
 
 static unsigned int curRow = 0;
 
+#define MESSAGE_TICKS (modules*columns*20)
+static int message_timeout = 0;
+static char message[200];
+static int msgIdx = 0;
+
 static int xoff = 0;
 void loop() {
-  delay(30);
+  delay(31);
   b.erase();
-  b.writeStr("HOT DOGS AND SPANDEX FORI",xoff,0);
-  xoff++;
-  xoff = xoff % 360;
+  if (message_timeout == 0) {
+    b.writeStr(GREETING,xoff,0);
+  } else {
+    b.writeStr(message,xoff,0);
+    message_timeout--;
+  }
+  xoff--;
+  if (xoff < 0) { xoff += modules*columns; }
   b.flip();
+  int nextChar = Serial2.read();
+  while (nextChar != -1) {
+    if (nextChar == '\n') {
+      message[msgIdx] = '\0';
+      message_timeout = MESSAGE_TICKS;
+      msgIdx = 0;
+      nextChar = -1;
+    } else {
+      message[msgIdx] = nextChar;
+      msgIdx++;
+      if (msgIdx > 140) msgIdx = 140;
+      nextChar = Serial2.read();
+    }
+  }
 }
 
 #define CLOCK_BITS (1<<0 | 1<<4 | 1<<5)

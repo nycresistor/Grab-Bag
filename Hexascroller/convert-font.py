@@ -7,7 +7,7 @@ f = PIL.Image.open("font-src.png")
 (w,h) = f.size
 d = f.getdata()
 
-inventory = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()"
+inventory = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#"
 
 charData = ['0'] * (8*8*128)
 
