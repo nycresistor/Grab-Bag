@@ -1,7 +1,10 @@
+
 // CLOCK PIN: A0 (22)
 // DATA 1: A1 (23)
 // DATA 2: A2 (24)
 // DATA 3: A3 (25)
+// CLOCK PIN: A4 (26)
+// CLOCK PIN: A5 (27)
 
 // ROW 0: E4 (2)
 // ROW 1: E5 (3)
@@ -25,6 +28,7 @@ static int active_row = -1;
 // 8K RAM
 uint8_t b1[columns*modules];
 uint8_t b2[columns*modules];
+uint8_t rowbuf[columns];
 
 class Bitmap {
   uint8_t* data;
@@ -45,16 +49,22 @@ public:
     }
   }
 
-  int writeChar(char c, int x, int y) {
+  int writeChar(char c, int x, int y, bool wrap = true) {
     int coff = (int)c * 8;
     uint8_t row = pgm_read_byte(charData+coff);
     if (row == 0) {
       return x;
-    }    
+    }
     uint8_t mask = 0xfe >> y;
     while (row != 1) {
       row = row >> y;
-      data[x] = row | (data[x] & mask);
+      if (wrap) {
+        x = x % (columns*modules);
+        if (x < 0) { x = x + columns*modules; }
+      }
+      if (x >= 0 && x < columns*modules) {
+        data[x] = row | (data[x] & mask);
+      }
       coff++;
       x++;
       row = pgm_read_byte(charData+coff);
@@ -68,6 +78,25 @@ public:
     dpl = tmp;
     sei();
   }
+  
+  uint8_t* buildRowBuf(int row) {
+    uint8_t* p = getDisplay();
+    uint8_t mask = 1 << (7-row);
+    for (int i = 0; i < columns; i++) {
+      rowbuf[i] = 0;
+      if ( (p[i] & mask) != 0 ) {
+        rowbuf[i] |= 1<<1;
+      }
+      if ( (p[i+columns] & mask) != 0 ) {
+        rowbuf[i] |= 1<<2;
+      }
+      if ( (p[i+(2*columns)] & mask) != 0 ) {
+        rowbuf[i] |= 1<<3;
+      }
+    }
+    return rowbuf;
+  }
+  
   uint8_t* getDisplay() { return dpl; }
 };
 
@@ -87,13 +116,13 @@ inline void rowOn(int row) {
   // ROW 5: H5 (8)
   // ROW 6: H6 (9)
   switch( row ) {
-    case 0: PORTE |= _BV(4); break;
-    case 1: PORTE |= _BV(5); break;
-    case 2: PORTE |= _BV(3); break;
+    case 6: PORTE |= _BV(4); break;
+    case 5: PORTE |= _BV(5); break;
+    case 4: PORTE |= _BV(3); break;
     case 3: PORTH |= _BV(3); break;
-    case 4: PORTH |= _BV(4); break;
-    case 5: PORTH |= _BV(5); break;
-    case 6: PORTH |= _BV(6); break;
+    case 2: PORTH |= _BV(4); break;
+    case 1: PORTH |= _BV(5); break;
+    case 0: PORTH |= _BV(6); break;
   }
 }
 
@@ -108,8 +137,8 @@ void setup() {
   // DATA 1: A1
   // DATA 2: A2
   // DATA 3: A3
-  DDRA = 0x0f;
-  PORTA = 0x0f;
+  DDRA = 0x3f;
+  PORTA = 0x3f;
 // ROW 0: E4 (2)
 // ROW 1: E5 (4)
 // ROW 2: E3 (5)
@@ -132,9 +161,26 @@ void setup() {
   TCCR3A = 0b00000000;
   TCCR3B = 0b00001011;
   TIMSK3 = _BV(OCIE3A);
-  OCR3A = 400;
+  OCR3A = 300;
   
-  delay(500);
+  // Set up xbee
+  Serial2.begin(9600);
+  delay(1100);
+  send("+++");
+  delay(1100);
+  send("ATPL2\r");
+  delay(30);
+  _delay_ms(30);
+  send("ATMY1\r");
+  delay(30);
+  send("ATDL2\r");
+  delay(30);
+  send("ATSM0\r");
+  delay(30);
+  send("ATCN\r");
+  delay(30);
+
+  delay(100);
 }
 
 static unsigned int curRow = 0;
@@ -143,39 +189,34 @@ static int xoff = 0;
 void loop() {
   delay(30);
   b.erase();
-  b.writeStr("HOT DOGS",xoff,0);
+  b.writeStr("HOT DOGS AND SPANDEX FORI",xoff,0);
   xoff++;
-  xoff = xoff % 120;
+  xoff = xoff % 360;
   b.flip();
 }
+
+#define CLOCK_BITS (1<<0 | 1<<4 | 1<<5)
 
 ISR(TIMER3_COMPA_vect)
 {
   uint8_t row = curRow % 7;
-  uint8_t mask = 1 << (7-row);
-  uint8_t* p = b.getDisplay();
+  //  uint8_t mask = 1 << (7-row);
+  //uint8_t* p = b.getDisplay();
+  uint8_t* p = b.buildRowBuf(row);
   rowOff();
   for (int i = 0; i < columns; i++) {
-    // clock is 2, data is 3
-    // 2 == E4, 3 == E5 on the mega
-    if ( (p[(columns-1)-i] & mask) != 0 ) {
-      //PORTE = _BV(4);
-      //PORTA = 1;
-      //PORTE = 0;
-      PORTA = _BV(0) | _BV(1);
-      PORTA = _BV(1);
-    } else {
-      //PORTE = _BV(4);
-      //PORTA = 0;
-      //PORTE = 0;
-      PORTA = _BV(0);
-      PORTA = 0;
-    }
-
-    PORTA |= _BV(0);
-    //PORTE = _BV(4);
-  //    digitalWrite(clock_pin, LOW);
-  //  digitalWrite(clock_pin, HIGH);
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    PORTA = ~(p[i] | CLOCK_BITS);
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    PORTA = ~(p[i] & ~CLOCK_BITS);
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    PORTA = ~(p[i] | CLOCK_BITS);
   }
   rowOn(curRow%7);
   curRow++;
