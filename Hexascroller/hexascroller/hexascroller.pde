@@ -13,7 +13,7 @@
 // ROW 4: H4 (7)
 // ROW 5: H5 (8)
 // ROW 6: H6 (9)
-#define GREETING "WELCOME TO THE INTERACTIVE PARTY!  TWITTER TO #NYCR TO MESSAGE.  "
+#define GREETING "HACK ON ME  HTTP://WIKI.NYCRESISTOR.COM/WIKI/HEXASCROLLER "
 
 const static int columns = 120;
 const static int modules = 3;
