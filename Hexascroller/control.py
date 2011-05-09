@@ -4,13 +4,15 @@ import serial
 import re
 import time
 import sys
+import json
+import popen2
 
 class Monitor:
     def __init__(self):
         self.serialPort = None
 
     def open(self,portName,baud=9600):
-        self.serialPort = serial.Serial(portName, baud, timeout=1)
+        self.serialPort = serial.Serial(portName, baud, timeout=10)
         try:
             self.serialPort.open()
         except serial.SerialException, e:
@@ -36,14 +38,27 @@ class Monitor:
 
 mon = Monitor()
 mon.open("/dev/ttyUSB0")
+last_id = "foo"
 
-mon.serialPort.write("MESSAGE FOR YOU D00D\n");
+req_str=r"wget --quiet -O - 'http://search.twitter.com/search.json?q=%23nycr&rpp=1%page=1'"
 
 while 1:
-    data = mon.serialPort.read(1)  # read one, blocking
-    n = mon.serialPort.inWaiting() # look if there is more
-    if n:
-        data = data + mon.serialPort.read(n)
-    print "DATA: ", data
-
-
+    try:
+        (so,si) = popen2.popen2(req_str)
+        d = so.read()
+        o = json.loads(d)
+        r = o['results'][0]
+        t_id = r['id']
+        t_text = r['text']
+        if (t_id != last_id):
+            last_id = t_id
+            print "Writing",t_id,t_text
+            m = t_text
+            while (len(m)+len(t_text)+5) < 70:
+                m = m + "          "+t_text
+            mon.serialPort.write(m.upper()+"\n")
+            
+    except Exception as e:
+        print "except", e
+        pass
+    time.sleep(2)
