@@ -42,23 +42,30 @@ last_id = "foo"
 
 req_str=r"wget --quiet -O - 'http://search.twitter.com/search.json?q=%23nycr&rpp=1%page=1'"
 
-while 1:
-    try:
-        (so,si) = popen2.popen2(req_str)
-        d = so.read()
-        o = json.loads(d)
-        r = o['results'][0]
-        t_id = r['id']
-        t_text = r['text']
-        if (t_id != last_id):
-            last_id = t_id
-            print "Writing",t_id,t_text
-            m = t_text
-            while (len(m)+len(t_text)+5) < 70:
-                m = m + "          "+t_text
-            mon.serialPort.write(m.upper()+"\n")
-            
-    except Exception as e:
-        print "except", e
-        pass
-    time.sleep(2)
+def twitter():
+    global last_id
+    while 1:
+        try:
+            (so,si) = popen2.popen2(req_str)
+            d = so.read()
+            o = json.loads(d)
+            r = o['results'][0]
+            t_id = r['id']
+            t_text = r['text']
+            if (t_id != last_id):
+                last_id = t_id
+                print "Writing",t_id,t_text
+                m = t_text
+                while (len(m)+len(t_text)+5) < 70:
+                    m = m + "          "+t_text
+                mon.serialPort.write(m+"\n")
+        except Exception as e:
+            print "except", e
+            pass
+        time.sleep(2)
+
+if len(sys.argv) > 1:
+    s = " ".join(sys.argv[1:])
+    mon.serialPort.write(s+"\n")
+else:
+    twitter()

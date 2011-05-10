@@ -13,7 +13,8 @@
 // ROW 4: H4 (7)
 // ROW 5: H5 (8)
 // ROW 6: H6 (9)
-#define GREETING "HACK ON ME  HTTP://WIKI.NYCRESISTOR.COM/WIKI/HEXASCROLLER "
+//#define GREETING "Now with lowercase http://wiki.nycresistor.com/wiki/hexascroller"
+#define GREETING "!s command to set default message"
 
 const static int columns = 120;
 const static int modules = 3;
@@ -23,6 +24,7 @@ static int active_row = -1;
 
 #include <avr/pgmspace.h>
 #include "hfont.h"
+#include <EEPROM.h>
 
 // Resources:
 // 256K program space
@@ -195,17 +197,52 @@ void setup() {
 
 static unsigned int curRow = 0;
 
+#define CMD_SIZE 200
 #define MESSAGE_TICKS (modules*columns*20)
 static int message_timeout = 0;
-static char message[200];
-static int msgIdx = 0;
+static char message[CMD_SIZE+1];
+static char command[CMD_SIZE+1];
+static int cmdIdx = 0;
+
+const static uint16_t DEFAULT_MSG_OFF = 0x10;
+
+void processCommand() {
+  if (command[0] == '!') {
+    // command processing
+    if (command[1] == 's') {
+      for (int i = 2; i < CMD_SIZE+1; i++) {
+	EEPROM.write(DEFAULT_MSG_OFF-2+i,command[i]);
+	if (command[i] == '\0') break;
+      }
+    }
+  } else {
+    // message
+    message_timeout = MESSAGE_TICKS;
+    for (int i = 0; i < CMD_SIZE+1; i++) {
+      message[i] = command[i];
+      if (command[i] == '\0') break;
+    }
+  }
+}
 
 static int xoff = 0;
 void loop() {
   delay(31);
   b.erase();
   if (message_timeout == 0) {
-    b.writeStr(GREETING,xoff,0);
+    // read message from eeprom
+    uint8_t c = EEPROM.read(DEFAULT_MSG_OFF);
+    if (c == 0xff) {
+      // Fallback if none written
+      b.writeStr(GREETING,xoff,0);
+    } else {
+      int idx = 0;
+      while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
+	message[idx++] = c;
+      }
+      message[idx] = '\0';
+      b.writeStr(message,xoff,0);
+    }
   } else {
     b.writeStr(message,xoff,0);
     message_timeout--;
@@ -216,14 +253,14 @@ void loop() {
   int nextChar = Serial2.read();
   while (nextChar != -1) {
     if (nextChar == '\n') {
-      message[msgIdx] = '\0';
-      message_timeout = MESSAGE_TICKS;
-      msgIdx = 0;
+      command[cmdIdx] = '\0';
+      processCommand();
+      cmdIdx = 0;
       nextChar = -1;
     } else {
-      message[msgIdx] = nextChar;
-      msgIdx++;
-      if (msgIdx > 140) msgIdx = 140;
+      command[cmdIdx] = nextChar;
+      cmdIdx++;
+      if (cmdIdx > CMD_SIZE) cmdIdx = CMD_SIZE;
       nextChar = Serial2.read();
     }
   }
