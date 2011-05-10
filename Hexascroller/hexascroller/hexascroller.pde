@@ -239,6 +239,7 @@ void loop() {
       int idx = 0;
       while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
 	message[idx++] = c;
+        c = EEPROM.read(DEFAULT_MSG_OFF+idx);
       }
       message[idx] = '\0';
       b.writeStr(message,xoff,0);
