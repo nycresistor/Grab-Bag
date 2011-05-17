@@ -13,6 +13,9 @@
 // ROW 4: H4 (7)
 // ROW 5: H5 (8)
 // ROW 6: H6 (9)
+
+// PIEZO: L3 (46) (T5A)
+
 //#define GREETING "Now with lowercase http://wiki.nycresistor.com/wiki/hexascroller"
 #define GREETING "!s command to set default message"
 
@@ -104,6 +107,19 @@ public:
   uint8_t* getDisplay() { return dpl; }
 };
 
+void setBuzzer(bool on) {
+  if (on) {
+    DDRL |= 1 << 3;
+    // mode 4, CTC, clock src = 1/8
+    TCCR5A = 0b01000000;
+    TCCR5B = 0b00001010;
+    OCR5A = 3000; // ~500hz
+  } else {
+    TCCR5A = 0;
+    TCCR5B = 0;
+  }
+}
+
 static Bitmap b;
 
 inline void rowOff() {
@@ -164,7 +180,9 @@ void setup() {
   TCCR3B = 0b00001011;
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 300;
-  
+
+  setBuzzer(true);
+
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
 
@@ -191,6 +209,8 @@ void setup() {
 
   Serial2.flush();
   Serial.println("XBEE up.");
+
+  setBuzzer(false);
 
   delay(100);
 }
