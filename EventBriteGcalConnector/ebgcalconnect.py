@@ -84,7 +84,7 @@ class EBConnector:
 	
 	for i, an_event in enumerate(query.entry): 
   		
-  		print "\t" + an_event.title.text
+  		print "\t" + str(an_event.title.text)
   		for a_when in an_event.when:
   			print "\t\t" + a_when.start_time + " ::: " + a_when.end_time
 
