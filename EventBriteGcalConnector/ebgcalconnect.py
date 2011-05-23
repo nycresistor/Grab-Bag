@@ -22,6 +22,7 @@ import time
 appkey = ""
 calendarURL = ""
 ebRss = ""
+venue = None
 
 def retry(ExceptionToCheck, tries=10, delay=2, backoff=1):
     """Retry decorator
@@ -134,7 +135,7 @@ class EBConnector:
   	else:
   		print "\tCreating event %s"%(eid)
   		
-  	event = self._InsertEvent(ebEvent['title'], ebEvent['desc'], "NYCResistor: 87 3rd Ave, Brooklyn, NY", ebEvent['startdate'], ebEvent['enddate'])
+  	event = self._InsertEvent(ebEvent['title'], ebEvent['desc'], venue, ebEvent['startdate'], ebEvent['enddate'])
 	#event = self._AddExtendedProperty(event, name="EventBrite", value=eid)
 	return event
   
@@ -154,6 +155,8 @@ class EBConnector:
 	
 	courses = {}
 	
+	global venue
+	
 	for tag in tags:
 		match = re.search(r"(event/)(\d+)(/rss)", str(tag))
 		if match: 
@@ -169,6 +172,19 @@ class EBConnector:
 		enddate = self._fixText(soup.find('end_date'))
 		title = self._fixText(soup.find('title'))
 		#desc = self._fixText(soup.find('description'))
+		
+		if not venue:
+			venueXML = soup.find('venue')
+			name = str(venueXML.find('name'))
+			address = str(venueXML.find('address'))
+			address2 = str(venueXML.find('address_2'))
+			city = str(venueXML.find('city'))
+			region = str(venueXML.find('region'))
+			zip = str(venueXML.find('postal_code'))
+			list = [name, address, address2, city, region]
+			venue = self._fixText(", ".join(list) + " " + zip)
+			print "Setting Venue: " + venue
+		
 		urls = soup.findAll('url')
 		url = ""
 		for addr in urls:
