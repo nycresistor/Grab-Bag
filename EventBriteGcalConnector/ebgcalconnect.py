@@ -49,9 +49,11 @@ def retry(ExceptionToCheck, tries=10, delay=2, backoff=1):
 class EBConnector:
 
   def __init__(self, email, password):
+  	#setup calendar client
 	self.cal_client = gdata.calendar.client.CalendarClient(source='Google-Calendar_Python_Sample-1.0')
 	self.cal_client.ClientLogin(email, password, self.cal_client.source);
 	
+	#setup calendar service
 	self.cal_service = gdata.calendar.service.CalendarService()
 	self.cal_service.email = email
 	self.cal_service.password = password
@@ -69,9 +71,6 @@ class EBConnector:
 	end_time = time.strftime('%Y-%m-%dT%H:%M:%S.000Z', end_time)
 	event.when.append(gdata.data.When(start=start_time,end=end_time))
 	
-	print start_time
-	print end_time
-	
 	new_event = self.cal_client.InsertEvent(event, calendarURL)
 
 	return new_event
@@ -79,12 +78,9 @@ class EBConnector:
   @retry(gdata.client.RequestError, tries=10)
   def _GetCalEvents(self, calendarURL):
 	query = self.cal_service.GetCalendarEventFeed(calendarURL)
-	
-	#events = {}
 	gcalEvents = {}
 	
-	print "=== === ==="
-  	print "Found in gcal:"
+  	print "\nFound in gcal:"
 	
 	for i, an_event in enumerate(query.entry): 
   		
@@ -98,7 +94,7 @@ class EBConnector:
   			if an_event.extended_property[0].value not in gcalEvents:
   				gcalEvents[an_event.extended_property[0].value] = an_event
   			else:
-  				print "\t\tDeleting duplicate gcal event: %s"%(an_event.extended_property[0].value)
+  				print "\t\t=== Deleting duplicate gcal event: %s ==="%(an_event.extended_property[0].value)
   				self.cal_service.DeleteEvent(an_event.GetEditLink().href)
   				
   	return gcalEvents
@@ -114,13 +110,14 @@ class EBConnector:
   		event = self._DeleteAndOrCreateEvent(ebEvent, eid, gcalEvent)
   		return event
   	return False
-  	
+  
+  @retry(gdata.service.RequestError, tries=10)
   def _DeleteAndOrCreateEvent(self, ebEvent, eid, gcalEvent=None):
   	if gcalEvent:
-  		print "Recreating event %s"%(eid)
+  		print "\tRecreating event %s"%(eid)
   		self.cal_service.DeleteEvent(gcalEvent.GetEditLink().href)
   	else:
-  		print "Creating event %s"%(eid)
+  		print "\tCreating event %s"%(eid)
   		
   	event = self._InsertEvent(ebEvent['title'], ebEvent['desc'], "NYCResistor: 87 3rd Ave, Brooklyn, NY", ebEvent['startdate'], ebEvent['enddate'])
 	event = self._AddExtendedProperty(event, name="EventBrite", value=eid)
@@ -130,7 +127,7 @@ class EBConnector:
   def _AddExtendedProperty(self, event, name, value):
     event.extended_property.append(
         gdata.calendar.data.CalendarExtendedProperty(name=name, value=value))
-    print 'Adding extended property to event: \'%s\'=\'%s\'' % (name, value,)
+    print '\tAdding extended property to event: \'%s\'=\'%s\'' % (name, value,)
     return self.cal_client.Update(event)
 
   def _getCourseListing(self):
@@ -180,18 +177,20 @@ class EBConnector:
   		
 	ebEvents = self._getCourseListing()
 	calEvents = self._GetCalEvents(calendarURL)
-
+	
+	print "\n"
+	
 	for eid in ebEvents:
 		if eid not in calEvents:	#new eb course not in calendar
 			print "Adding new course %s to gcal"%(eid)	
 			self._DeleteAndOrCreateEvent(ebEvents[eid], eid)
 			
 		else:
-			print "=== === ==="
-			print "Checking %s for discrepencies"%(eid)
-			self._UpdateCalEvent(calendarURL, calEvents[eid], ebEvents[eid], eid)	
-		
-	print "All good in the neighborhood"
+			print "Reconciling %s : %s"%(eid, ebEvents[eid]['title'])
+			result = self._UpdateCalEvent(calendarURL, calEvents[eid], ebEvents[eid], eid)
+			if not result:	print "\tNo changes."
+	
+	print "\n\nAll good in the neighborhood"
 
 def main():
 
