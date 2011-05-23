@@ -1,0 +1,7 @@
+This is a python script that reads an EventBrite rss feed, queries the EB API for detailed information,
+then syncs with a Google calendar. Requires the latest code from the gdata-python-client project 
+(http://code.google.com/p/gdata-python-client/source/checkout). Pass it your google calendar user,
+password, calendar url (private XML url), and EventBrite API key (http://www.eventbrite.com/api/key/) on the command line.
+
+Example:
+python ebgcalconnect.py --user myself@gmail.com --pw hunter2 --key aBcDeFghIjkLmN --url https://www.google.com/calendar/feeds/1ab2d239DdskfjsFs23%40group.calendar.google.com/private/full
