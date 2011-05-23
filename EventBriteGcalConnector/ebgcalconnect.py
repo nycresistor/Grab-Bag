@@ -97,8 +97,9 @@ class EBConnector:
   		#	else:
   		#		print "\t\t=== Deleting duplicate gcal event: %s ==="%(an_event.extended_property[0].value)
   		#		self.cal_service.DeleteEvent(an_event.GetEditLink().href)
-  		
+
   		m = re.search(r"(<a href=\")(\D+)(\d+)(\">)", str(an_event.content.text))
+
   		if m:
   			ebid = m.group(3)
   			print "\t\tEventBrite: " + ebid
