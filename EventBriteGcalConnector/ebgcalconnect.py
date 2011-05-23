@@ -19,8 +19,9 @@ import re
 import json
 import time
 
-appkey = ''
+appkey = ""
 calendarURL = ""
+ebRss = ""
 
 def retry(ExceptionToCheck, tries=10, delay=2, backoff=1):
     """Retry decorator
@@ -88,14 +89,27 @@ class EBConnector:
   		for a_when in an_event.when:
   			print "\t\t" + a_when.start_time + " ::: " + a_when.end_time
 
-  		if an_event.extended_property != []:
-  			print "\t\tEventBrite: " + an_event.extended_property[0].value
+  		#if an_event.extended_property != []:
+  		#	print "\t\tEventBrite: " + an_event.extended_property[0].value
+  		#	
+  		#	if an_event.extended_property[0].value not in gcalEvents:
+  		#		gcalEvents[an_event.extended_property[0].value] = an_event
+  		#	else:
+  		#		print "\t\t=== Deleting duplicate gcal event: %s ==="%(an_event.extended_property[0].value)
+  		#		self.cal_service.DeleteEvent(an_event.GetEditLink().href)
+  		
+  		m = re.search(r"(<a href=\")(\D+)(\d+)(\">)", str(an_event.content.text))
+  		if m:
+  			ebid = m.group(3)
+  			print "\t\tEventBrite: " + ebid
   			
-  			if an_event.extended_property[0].value not in gcalEvents:
-  				gcalEvents[an_event.extended_property[0].value] = an_event
+  			if ebid not in gcalEvents:
+  				gcalEvents[ebid] = an_event
   			else:
-  				print "\t\t=== Deleting duplicate gcal event: %s ==="%(an_event.extended_property[0].value)
+  				print "\t\t=== Deleting duplicate gcal event: %s ==="%(ebid)
   				self.cal_service.DeleteEvent(an_event.GetEditLink().href)
+  		else:
+  			print "\t\tNO MATCH"
   				
   	return gcalEvents
 
@@ -120,18 +134,18 @@ class EBConnector:
   		print "\tCreating event %s"%(eid)
   		
   	event = self._InsertEvent(ebEvent['title'], ebEvent['desc'], "NYCResistor: 87 3rd Ave, Brooklyn, NY", ebEvent['startdate'], ebEvent['enddate'])
-	event = self._AddExtendedProperty(event, name="EventBrite", value=eid)
+	#event = self._AddExtendedProperty(event, name="EventBrite", value=eid)
 	return event
   
-  @retry(gdata.service.RequestError, tries=10)
-  def _AddExtendedProperty(self, event, name, value):
-    event.extended_property.append(
-        gdata.calendar.data.CalendarExtendedProperty(name=name, value=value))
-    print '\tAdding extended property to event: \'%s\'=\'%s\'' % (name, value,)
-    return self.cal_client.Update(event)
+  #@retry(gdata.service.RequestError, tries=10)
+  #def _AddExtendedProperty(self, event, name, value):
+  #  event.extended_property.append(
+  #      gdata.calendar.data.CalendarExtendedProperty(name=name, value=value))
+  #  print '\tAdding extended property to event: \'%s\'=\'%s\'' % (name, value,)
+  #  return self.cal_client.Update(event)
 
   def _getCourseListing(self):
-	xml = urllib2.urlopen("http://www.eventbrite.com/rss/user_list_events/73882583")
+	xml = urllib2.urlopen(ebRss)
 	soup = BeautifulStoneSoup(xml)
 	tags = soup.findAll('link')
 	
@@ -153,12 +167,20 @@ class EBConnector:
 		startdate = self._fixText(soup.find('start_date'))
 		enddate = self._fixText(soup.find('end_date'))
 		title = self._fixText(soup.find('title'))
-		desc = self._fixText(soup.find('description'))
+		#desc = self._fixText(soup.find('description'))
+		urls = soup.findAll('url')
+		url = ""
+		for addr in urls:
+			m = re.search(r"\d+", str(addr))
+			if m:
+				url = self._fixText(addr)
 		
 		startdate = time.gmtime(time.mktime(time.strptime(startdate, "%Y-%m-%d %H:%M:%S")))
 		enddate = time.gmtime(time.mktime(time.strptime(enddate, "%Y-%m-%d %H:%M:%S")))
-
-		thisCourse = {'title':title, 'desc':desc, 'startdate':startdate, 'enddate':enddate}
+		
+		desc = '<a href="%s">Click Here</a> for more info.'%(url)
+		
+		thisCourse = {'title':title, 'desc':desc, 'startdate':startdate, 'enddate':enddate, 'url':url}
 		
 		courses[eid] = thisCourse
 	return courses
@@ -196,9 +218,9 @@ def main():
 
   # parse command line options
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "", ["user=", "pw=", "delete=", "url=", "key="])
+		opts, args = getopt.getopt(sys.argv[1:], "", ["user=", "pw=", "delete=", "url=", "key=", "rss="])
 	except getopt.error, msg:
-		print ('python calendarExample.py --user [username] --pw [password] --url [cal url] --key [eb key] ' + '--delete [true|false] ')
+		print ('python calendarExample.py --user [username] --pw [password] --url [cal url] --key [eb key] --rss [eb rss url] ' + '--delete [true|false] ')
 		sys.exit(2)
 
 	user = ''
@@ -207,6 +229,7 @@ def main():
 	
 	global calendarURL
 	global appkey
+	global ebRss
 	
   # Process options
 	for o, a in opts:
@@ -220,9 +243,11 @@ def main():
 			calendarURL = a
 		elif o == "--key":
 			appkey = a
+		elif o == "--rss":
+			ebRss = a
 
-	if user == '' or pw == '' or calendarURL == '' or appkey == '':
-		print ('python calendarExample.py --user [username] --pw [password] --url [cal url] --key [eb key] ' + '--delete [true|false] ')
+	if user == '' or pw == '' or calendarURL == '' or appkey == '' or ebRss == '':
+		print ('python calendarExample.py --user [username] --pw [password] --url [cal url] --key [eb key] --rss [eb rss url] ' + '--delete [true|false] ')
 		sys.exit(2)
 
 	cal = EBConnector(user, pw)
