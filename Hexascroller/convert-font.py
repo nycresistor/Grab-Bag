@@ -7,7 +7,7 @@ f = PIL.Image.open("font-src.png")
 (w,h) = f.size
 d = f.getdata()
 
-inventory = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz"
+inventory = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz,=^|-_+"
 
 charData = ['0'] * (8*8*128)
 
@@ -36,7 +36,9 @@ for c in inventory:
         x = x + 1
         offset = offset + 8
 
-print "uint8_t charData[] PROGMEM = {"
+print """
+#include "hfont.h"
+uint8_t charData[] PROGMEM = {"""
 
 for i in range(8*128):
     sub = charData[i*8:(i+1)*8]
