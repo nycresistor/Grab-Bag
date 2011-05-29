@@ -29,6 +29,17 @@ static int active_row = -1;
 #include "hfont.h"
 #include <EEPROM.h>
 
+typedef enum {
+  LEFT,
+  RIGHT,
+  UP,
+  DOWN,
+  NONE
+} Direction;
+
+Direction dir = LEFT;
+int scroll_delay = 31;
+
 // Resources:
 // 256K program space
 // 8K RAM
@@ -181,8 +192,6 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 300;
 
-  setBuzzer(true);
-
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
 
@@ -210,8 +219,6 @@ void setup() {
   Serial2.flush();
   Serial.println("XBEE up.");
 
-  setBuzzer(false);
-
   delay(100);
 }
 
@@ -229,12 +236,35 @@ const static uint16_t DEFAULT_MSG_OFF = 0x10;
 void processCommand() {
   if (command[0] == '!') {
     // command processing
-    if (command[1] == 's') {
+    switch (command[1]) {
+    case 's':
+      // Set default string
       for (int i = 2; i < CMD_SIZE+1; i++) {
 	EEPROM.write(DEFAULT_MSG_OFF-2+i,command[i]);
 	if (command[i] == '\0') break;
       }
-    }
+      Serial2.println("OK");
+      break;
+    case 'S':
+      // Get current scroller status
+      Serial2.print("MSG:");
+      Serial2.println(message);
+      break;
+    case 'd':
+      switch (command[2]) {
+      case 'l': dir = LEFT; break;
+      case 'r': dir = RIGHT; break;
+      case 'u': dir = UP; break;
+      case 'd': dir = DOWN; break;
+      case 'n': dir = NONE; break;
+      default:
+	Serial2.println("Unrecognized direction");
+	return;
+	break;
+      }
+      Serial2.println("OK");
+      break;
+    }	
   } else {
     // message
     message_timeout = MESSAGE_TICKS;
@@ -246,15 +276,17 @@ void processCommand() {
 }
 
 static int xoff = 0;
+static int yoff = 0;
+
 void loop() {
-  delay(31);
+  delay(scroll_delay);
   b.erase();
   if (message_timeout == 0) {
     // read message from eeprom
     uint8_t c = EEPROM.read(DEFAULT_MSG_OFF);
     if (c == 0xff) {
       // Fallback if none written
-      b.writeStr(GREETING,xoff,0);
+      b.writeStr(GREETING,xoff,yoff);
     } else {
       int idx = 0;
       while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
@@ -262,14 +294,24 @@ void loop() {
         c = EEPROM.read(DEFAULT_MSG_OFF+idx);
       }
       message[idx] = '\0';
-      b.writeStr(message,xoff,0);
+      b.writeStr(message,xoff,yoff);
     }
   } else {
-    b.writeStr(message,xoff,0);
+    b.writeStr(message,xoff,yoff);
     message_timeout--;
   }
-  xoff--;
+  switch (dir) {
+  case LEFT: xoff--; break;
+  case RIGHT: xoff++; break;
+  case UP: yoff--; break;
+  case DOWN: yoff++; break;
+  }
+
   if (xoff < 0) { xoff += modules*columns; }
+  if (xoff >= modules*columns) { xoff -= modules*columns; }
+  if (yoff < 0) { yoff += 7; }
+  if (yoff >= 7) { yoff -= 7; }
+
   b.flip();
   int nextChar = Serial2.read();
   while (nextChar != -1) {
@@ -300,11 +342,14 @@ ISR(TIMER3_COMPA_vect)
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
+    __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
+    __asm__("nop\n\t");
     PORTA = ~(p[i] & ~CLOCK_BITS);
+    __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
