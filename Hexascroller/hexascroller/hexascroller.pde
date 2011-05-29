@@ -60,7 +60,7 @@ public:
   }
   void writeStr(char* p, int x, int y) {
     while (*p != '\0') {
-      x = writeChar(*p,x,0);
+      x = writeChar(*p,x,y);
       p++;
       x++;
     }
