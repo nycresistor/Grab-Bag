@@ -118,17 +118,26 @@ public:
   uint8_t* getDisplay() { return dpl; }
 };
 
-void setBuzzer(bool on) {
-  if (on) {
-    DDRL |= 1 << 3;
-    // mode 4, CTC, clock src = 1/8
-    TCCR5A = 0b01000000;
-    TCCR5B = 0b00001010;
-    OCR5A = 3000; // ~500hz
-  } else {
-    TCCR5A = 0;
-    TCCR5B = 0;
+int buzz_len = 0;
+
+void buzz() {
+  if (buzz_len > 0) {
+    buzz_len--;
+    if (buzz_len == 0) {
+      TCCR5A = 0;
+      TCCR5B = 0;
+    }
   }
+}
+
+void startBuzz(int period, int length) {
+  DDRL |= 1 << 3;
+  // mode 4, CTC, clock src = 1/8
+  TCCR5A = 0b01000000;
+  TCCR5B = 0b00001010;
+  OCR5A = period; // 3000; // ~500hz
+  if (length <= 0) { buzz_len = 1; }
+  else { buzz_len = length; }
 }
 
 static Bitmap b;
@@ -250,6 +259,10 @@ void processCommand() {
       Serial2.print("MSG:");
       Serial2.println(message);
       break;
+    case 'b':
+      startBuzz(3000,30);
+      Serial2.println("OK");
+      break;
     case 'd':
       switch (command[2]) {
       case 'l': dir = LEFT; break;
@@ -280,6 +293,7 @@ static int yoff = 0;
 
 void loop() {
   delay(scroll_delay);
+  buzz();
   b.erase();
   if (message_timeout == 0) {
     // read message from eeprom
