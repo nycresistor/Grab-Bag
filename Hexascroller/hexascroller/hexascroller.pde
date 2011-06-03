@@ -130,11 +130,13 @@ void buzz() {
   }
 }
 
-void startBuzz(int period, int length) {
+void startBuzz(int frequency, int length) {
   DDRL |= 1 << 3;
   // mode 4, CTC, clock src = 1/8
   TCCR5A = 0b01000000;
   TCCR5B = 0b00001010;
+  // period = 1/freq 
+  int period = 2000000 / frequency;
   OCR5A = period; // 3000; // ~500hz
   if (length <= 0) { buzz_len = 1; }
   else { buzz_len = length; }
@@ -242,6 +244,16 @@ static int cmdIdx = 0;
 
 const static uint16_t DEFAULT_MSG_OFF = 0x10;
 
+int eatInt(char*& p) {
+  int v = 0;
+  while (*p >= '0' && *p <= '9') {
+    v *= 10;
+    v += *p - '0';
+    p++;
+  }
+  return v;
+}
+
 void processCommand() {
   if (command[0] == '!') {
     // command processing
@@ -260,7 +272,17 @@ void processCommand() {
       Serial2.println(message);
       break;
     case 'b':
-      startBuzz(3000,30);
+      {
+        char* p = command + 2;
+        int freq = eatInt(p);
+        if (*p != '\0') {
+          p++;
+        }
+        int period = eatInt(p);
+        if (freq == 0) { freq = 500; }
+        if (period == 0) { period = 5; }
+        startBuzz(freq,period);
+      }        
       Serial2.println("OK");
       break;
     case 'd':
