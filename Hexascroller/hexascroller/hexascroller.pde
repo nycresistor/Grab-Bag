@@ -40,6 +40,20 @@ typedef enum {
 Direction dir = LEFT;
 int scroll_delay = 31;
 
+#define OCTAVES 4
+#define NOTES_PER_OCTAVE 12
+// A A# B C C# D D# E F F# G G#
+// octaves: 4
+// notes per octave: 12
+int pitches[OCTAVES * NOTES_PER_OCTAVE] = [
+    // octave 0
+    // octave 0 (middle A440)
+    110, 117, 123, 131, 139, 147, 156, 165, 175, 185, 196, 208,
+    220, 233, 246, 261, 277, 293, 311, 330, 349, 370, 392, 415,
+    440, 466, 493, 523, 554, 587, 622, 659, 698, 740, 784, 830,
+    880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661
+];
+
 // Resources:
 // 256K program space
 // 8K RAM
