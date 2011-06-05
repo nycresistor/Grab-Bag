@@ -29,6 +29,31 @@ static int active_row = -1;
 #include "hfont.h"
 #include <EEPROM.h>
 
+typedef enum {
+  LEFT,
+  RIGHT,
+  UP,
+  DOWN,
+  NONE
+} Direction;
+
+Direction dir = LEFT;
+int scroll_delay = 31;
+
+#define OCTAVES 4
+#define NOTES_PER_OCTAVE 12
+// A A# B C C# D D# E F F# G G#
+// octaves: 4
+// notes per octave: 12
+int pitches[OCTAVES * NOTES_PER_OCTAVE] = [
+    // octave 0
+    // octave 0 (middle A440)
+    110, 117, 123, 131, 139, 147, 156, 165, 175, 185, 196, 208,
+    220, 233, 246, 261, 277, 293, 311, 330, 349, 370, 392, 415,
+    440, 466, 493, 523, 554, 587, 622, 659, 698, 740, 784, 830,
+    880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661
+];
+
 // Resources:
 // 256K program space
 // 8K RAM
@@ -49,7 +74,7 @@ public:
   }
   void writeStr(char* p, int x, int y) {
     while (*p != '\0') {
-      x = writeChar(*p,x,0);
+      x = writeChar(*p,x,y);
       p++;
       x++;
     }
@@ -107,17 +132,28 @@ public:
   uint8_t* getDisplay() { return dpl; }
 };
 
-void setBuzzer(bool on) {
-  if (on) {
-    DDRL |= 1 << 3;
-    // mode 4, CTC, clock src = 1/8
-    TCCR5A = 0b01000000;
-    TCCR5B = 0b00001010;
-    OCR5A = 3000; // ~500hz
-  } else {
-    TCCR5A = 0;
-    TCCR5B = 0;
+int buzz_len = 0;
+
+void buzz() {
+  if (buzz_len > 0) {
+    buzz_len--;
+    if (buzz_len == 0) {
+      TCCR5A = 0;
+      TCCR5B = 0;
+    }
   }
+}
+
+void startBuzz(int frequency, int length) {
+  DDRL |= 1 << 3;
+  // mode 4, CTC, clock src = 1/8
+  TCCR5A = 0b01000000;
+  TCCR5B = 0b00001010;
+  // period = 1/freq 
+  int period = 2000000 / frequency;
+  OCR5A = period; // 3000; // ~500hz
+  if (length <= 0) { buzz_len = 1; }
+  else { buzz_len = length; }
 }
 
 static Bitmap b;
@@ -181,8 +217,6 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 300;
 
-  setBuzzer(true);
-
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
 
@@ -210,8 +244,6 @@ void setup() {
   Serial2.flush();
   Serial.println("XBEE up.");
 
-  setBuzzer(false);
-
   delay(100);
 }
 
@@ -226,15 +258,62 @@ static int cmdIdx = 0;
 
 const static uint16_t DEFAULT_MSG_OFF = 0x10;
 
+int eatInt(char*& p) {
+  int v = 0;
+  while (*p >= '0' && *p <= '9') {
+    v *= 10;
+    v += *p - '0';
+    p++;
+  }
+  return v;
+}
+
 void processCommand() {
   if (command[0] == '!') {
     // command processing
-    if (command[1] == 's') {
+    switch (command[1]) {
+    case 's':
+      // Set default string
       for (int i = 2; i < CMD_SIZE+1; i++) {
 	EEPROM.write(DEFAULT_MSG_OFF-2+i,command[i]);
 	if (command[i] == '\0') break;
       }
-    }
+      Serial2.println("OK");
+      break;
+    case 'S':
+      // Get current scroller status
+      Serial2.print("MSG:");
+      Serial2.println(message);
+      break;
+    case 'b':
+      {
+        char* p = command + 2;
+        int freq = eatInt(p);
+        if (*p != '\0') {
+          p++;
+        }
+        int period = eatInt(p);
+        if (freq == 0) { freq = 500; }
+        if (period == 0) { period = 5; }
+        startBuzz(freq,period);
+      }        
+      Serial2.println("OK");
+      break;
+    case 'd':
+      switch (command[2]) {
+      case 'l': dir = LEFT; break;
+      case 'r': dir = RIGHT; break;
+      case 'u': dir = UP; break;
+      case 'd': dir = DOWN; break;
+      case 'n': dir = NONE; break;
+      default:
+	Serial2.println("Unrecognized direction");
+	return;
+	break;
+      }
+      Serial2.println("OK");
+      break;
+    }	
   } else {
     // message
     message_timeout = MESSAGE_TICKS;
@@ -246,15 +325,18 @@ void processCommand() {
 }
 
 static int xoff = 0;
+static int yoff = 0;
+
 void loop() {
-  delay(31);
+  delay(scroll_delay);
+  buzz();
   b.erase();
   if (message_timeout == 0) {
     // read message from eeprom
     uint8_t c = EEPROM.read(DEFAULT_MSG_OFF);
     if (c == 0xff) {
       // Fallback if none written
-      b.writeStr(GREETING,xoff,0);
+      b.writeStr(GREETING,xoff,yoff);
     } else {
       int idx = 0;
       while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
@@ -262,14 +344,24 @@ void loop() {
         c = EEPROM.read(DEFAULT_MSG_OFF+idx);
       }
       message[idx] = '\0';
-      b.writeStr(message,xoff,0);
+      b.writeStr(message,xoff,yoff);
     }
   } else {
-    b.writeStr(message,xoff,0);
+    b.writeStr(message,xoff,yoff);
     message_timeout--;
   }
-  xoff--;
+  switch (dir) {
+  case LEFT: xoff--; break;
+  case RIGHT: xoff++; break;
+  case UP: yoff--; break;
+  case DOWN: yoff++; break;
+  }
+
   if (xoff < 0) { xoff += modules*columns; }
+  if (xoff >= modules*columns) { xoff -= modules*columns; }
+  if (yoff < 0) { yoff += 7; }
+  if (yoff >= 7) { yoff -= 7; }
+
   b.flip();
   int nextChar = Serial2.read();
   while (nextChar != -1) {
@@ -300,11 +392,14 @@ ISR(TIMER3_COMPA_vect)
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
+    __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
+    __asm__("nop\n\t");
     PORTA = ~(p[i] & ~CLOCK_BITS);
+    __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");

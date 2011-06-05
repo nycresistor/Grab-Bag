@@ -7,22 +7,23 @@ f = PIL.Image.open("font-src.png")
 (w,h) = f.size
 d = f.getdata()
 
-inventory = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz"
+inventory = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz,=^|-_+'\""
 
 charData = ['0'] * (8*8*128)
 
 def getRow(x,offset):
     global charData
     global d
-    hasPixel = False
+    endMarker = False
     for y in range(7):
         i = w*y + x
-        if d[i] == (0,0,0):
-            hasPixel = True
+        if d[i] == (255,0,0):
+            endMarker = True
+        elif d[i] == (0,0,0):
             charData[offset+y] = '1'
         else:
             charData[offset+y] = '0'
-    return hasPixel
+    return not endMarker
 
 x = 0
 
@@ -36,7 +37,9 @@ for c in inventory:
         x = x + 1
         offset = offset + 8
 
-print "uint8_t charData[] PROGMEM = {"
+print """
+#include "hfont.h"
+uint8_t charData[] PROGMEM = {"""
 
 for i in range(8*128):
     sub = charData[i*8:(i+1)*8]
