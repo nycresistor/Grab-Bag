@@ -45,7 +45,7 @@ int scroll_delay = 31;
 // A A# B C C# D D# E F F# G G#
 // octaves: 6
 // notes per octave: 12
-int pitches[OCTAVES * NOTES_PER_OCTAVE] = [
+int pitches[OCTAVES * NOTES_PER_OCTAVE] = {
     // octave 0
     55, 58, 62, 65, 69, 73, 78, 82, 87, 92, 98, 104,
     110, 117, 123, 131, 139, 147, 156, 165, 175, 185, 196, 208,
@@ -53,7 +53,7 @@ int pitches[OCTAVES * NOTES_PER_OCTAVE] = [
     440, 466, 493, 523, 554, 587, 622, 659, 698, 740, 784, 830,
     880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661,
     1760, 1865, 1976, 2093, 2217, 2349, 2489, 2637, 2794, 2960, 3136, 3322
-];
+};
 
 // Resources:
 // 256K program space
@@ -151,7 +151,7 @@ struct Note {
   int frequency; // -1 for silent/rest
   char length; // in 32nd notes
 };
-Note tune[MAX_TUNE_LEN];
+Note tuneNotes[MAX_TUNE_LEN];
 int tuneLength = 0;
 int tuneIdx = 0;
 int noteTicks = 0;
@@ -161,16 +161,16 @@ void tune() {
     return;
   } else {
     noteTicks++;
-    if (noteTicks >= tune[tuneIdx].length) {
+    if (noteTicks >= tuneNotes[tuneIdx].length) {
       noteTicks = 0;
       tuneIdx++;
       if (tuneLength <= tuneIdx ||
-	  tune[tuneIdx].frequency == -1) {
+	  tuneNotes[tuneIdx].frequency == -1) {
 	// rest or end of tune
 	TCCR5A = 0;
 	TCCR5B = 0;
       } else {
-	startBuzz(tune[tuneIdx].frequency);
+	startBuzz(tuneNotes[tuneIdx].frequency);
       }
     }
   }
