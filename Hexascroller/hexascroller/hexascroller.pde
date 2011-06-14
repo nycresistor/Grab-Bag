@@ -45,7 +45,7 @@ int scroll_delay = 31;
 // A A# B C C# D D# E F F# G G#
 // octaves: 6
 // notes per octave: 12
-int pitches[OCTAVES * NOTES_PER_OCTAVE] = [
+int pitches[OCTAVES * NOTES_PER_OCTAVE] = {
     // octave 0
     55, 58, 62, 65, 69, 73, 78, 82, 87, 92, 98, 104,
     110, 117, 123, 131, 139, 147, 156, 165, 175, 185, 196, 208,
@@ -53,7 +53,7 @@ int pitches[OCTAVES * NOTES_PER_OCTAVE] = [
     440, 466, 493, 523, 554, 587, 622, 659, 698, 740, 784, 830,
     880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661,
     1760, 1865, 1976, 2093, 2217, 2349, 2489, 2637, 2794, 2960, 3136, 3322
-];
+};
 
 // Resources:
 // 256K program space
@@ -149,42 +149,50 @@ void buzz() {
 
 struct Note {
   int frequency; // -1 for silent/rest
-  char length; // in 32nd notes
+  unsigned int length; // in 32nd notes
 };
-Note tune[MAX_TUNE_LEN];
+Note tuneNotes[MAX_TUNE_LEN];
 int tuneLength = 0;
 int tuneIdx = 0;
 int noteTicks = 0;
 
 void tune() {
   if (tuneLength <= tuneIdx) {
+    TCCR5A = 0;
+    TCCR5B = 0;
     return;
   } else {
+    if (noteTicks == 0) {
+	if (tuneNotes[tuneIdx].frequency == -1) {
+          // rest or end of tune
+          TCCR5A = 0;
+          TCCR5B = 0;
+        } else {
+          startBuzz(tuneNotes[tuneIdx].frequency);
+        }
+    }
     noteTicks++;
-    if (noteTicks >= tune[tuneIdx].length) {
+    if (noteTicks >= tuneNotes[tuneIdx].length) {
       noteTicks = 0;
       tuneIdx++;
-      if (tuneLength <= tuneIdx ||
-	  tune[tuneIdx].frequency == -1) {
-	// rest or end of tune
-	TCCR5A = 0;
-	TCCR5B = 0;
-      } else {
-	startBuzz(tune[tuneIdx].frequency);
-      }
     }
   }
 }
 	
 
 void startBuzz(int frequency) {
-  DDRL |= 1 << 3;
-  // mode 4, CTC, clock src = 1/8
-  TCCR5A = 0b01000000;
-  TCCR5B = 0b00001010;
-  // period = 1/freq 
-  int period = 2000000 / frequency;
-  OCR5A = period; // 3000; // ~500hz
+  if (frequency <= 0) {
+    TCCR5A = 0;
+    TCCR5B = 0;
+  } else {
+    DDRL |= 1 << 3;
+    // mode 4, CTC, clock src = 1/8
+    TCCR5A = 0b01000000;
+    TCCR5B = 0b00001010;
+    // period = 1/freq 
+    int period = 2000000 / frequency;
+    OCR5A = period; // 3000; // ~500hz
+  }
 }
 
 static Bitmap b;
@@ -299,6 +307,57 @@ int eatInt(char*& p) {
   return v;
 }
 
+// a  a# b  c  c# d  d# e  f  f# g  g#
+// 0  1  2  3  4  5  6  7  8  9  10 11
+// -1 for rests
+int eatNote(char*& p) {
+  int base = 0;
+  switch(*p) {
+  case 'a':
+  case 'A':
+    base = 0;
+    break;
+  case 'b':
+  case 'B':
+    base = 2;
+    break;
+  case 'c':
+  case 'C':
+    base = 3;
+    break;
+  case 'd':
+  case 'D':
+    base = 5;
+    break;
+  case 'e':
+  case 'E':
+    base = 7;
+    break;
+  case 'f':
+  case 'F':
+    base = 8;
+    break;
+  case 'g':
+  case 'G':
+    base = 10;
+    break;
+  case 'r':
+  case 'R':
+    base = -1;
+    break;
+  default:
+    return 0;  
+  }
+  p++;
+  if (*p == '#') {
+    p++; base++;
+  }
+  if (*p == 'b') {
+    p++; base--;
+  }
+  return base;
+}
+    
 void processCommand() {
   if (command[0] == '!') {
     // command processing
@@ -326,10 +385,35 @@ void processCommand() {
         int period = eatInt(p);
         if (freq == 0) { freq = 500; }
         if (period == 0) { period = 5; }
-        startBuzz(freq,period);
+        tuneNotes[0].frequency = freq;
+        tuneNotes[1].length = period;
+        tuneLength = 1;
+        tuneIdx = 0;
       }        
       Serial2.println("OK");
       break;
+    case 't':
+      {
+	char* p = command + 2;
+	int tl = 0;
+	while (*p != '\0') {
+          int octave = *(p++) - '0'; //eatInt(p);
+	  int note = eatNote(p);
+          //if (note == -1) octave = 0;
+	  int len = eatInt(p);
+	  int ni = (octave * NOTES_PER_OCTAVE) + note;
+          if (ni <= 0) {
+            tuneNotes[tl].frequency = -1;
+          } else {
+            tuneNotes[tl].frequency = pitches[ni];
+          }
+          tuneNotes[tl].length = len;
+	  tl++;
+	  if (*p == ',') p++;
+	}
+	tuneLength = tl;
+	tuneIdx = 0;
+      }
     case 'd':
       switch (command[2]) {
       case 'l': dir = LEFT; break;
@@ -360,7 +444,7 @@ static int yoff = 0;
 
 void loop() {
   delay(scroll_delay);
-  buzz();
+  tune();
   b.erase();
   if (message_timeout == 0) {
     // read message from eeprom
