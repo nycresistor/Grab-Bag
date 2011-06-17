@@ -1,0 +1,17 @@
+{
+	"quake" : {
+		"server" : "net.server.us",
+		"port" : "27960",
+		"password" : "pass",
+		"logfile" : "/var/games/openarena-server/.q3a/osp/games.log"
+	},
+	
+	"irc" : {
+		"server" : "irc.freenode.net",
+		"port" : "6667",
+		"channel" : "#channel",
+		"nick" : "QuakeBot",
+		"ident" : "QuakeBot",
+		"realname" : "QuakeBot"
+	}
+}
