@@ -60,6 +60,7 @@ while 1:
         mon.serialPort.write(data)
         mon.serialPort.flush()
         time.sleep(0.01)
+        resp = ""
         n = mon.serialPort.inWaiting()
         if n:
             resp = resp + mon.serialPort.read(n)
