@@ -145,7 +145,7 @@ void buzz() {
   }
 }
 
-#define MAX_TUNE_LEN 100
+#define MAX_TUNE_LEN 400
 
 struct Note {
   int frequency; // -1 for silent/rest
@@ -288,7 +288,7 @@ void setup() {
 
 static unsigned int curRow = 0;
 
-#define CMD_SIZE 200
+#define CMD_SIZE 1024
 #define MESSAGE_TICKS (modules*columns*20)
 static int message_timeout = 0;
 static char message[CMD_SIZE+1];
