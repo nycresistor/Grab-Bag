@@ -19,19 +19,19 @@ class Monitor:
         except serial.SerialException, e:
             sys.stderr.write("Could not open serial port %s: %s\n" % (self.serialPort.portstr, e)
 )
-        time.sleep(1.1);
-        self.serialPort.write("+++");
-        time.sleep(1.1);
-        self.serialPort.write("ATPL2\r");
-        time.sleep(0.03);
-        self.serialPort.write("ATMY2\r");
-        time.sleep(0.03);
-        self.serialPort.write("ATDL1\r");
-        time.sleep(0.03);
-        self.serialPort.write("ATSM0\r");
-        time.sleep(0.03);
-        self.serialPort.write("ATCN\r");
-        time.sleep(0.03);
+        time.sleep(1.1)
+        self.serialPort.write("+++")
+        time.sleep(1.1)
+        self.serialPort.write("ATPL2\r")
+        time.sleep(0.03)
+        self.serialPort.write("ATMY2\r")
+        time.sleep(0.03)
+        self.serialPort.write("ATDL1\r")
+        time.sleep(0.03)
+        self.serialPort.write("ATSM0\r")
+        time.sleep(0.03)
+        self.serialPort.write("ATCN\r")
+        time.sleep(0.03)
         data = self.serialPort.read(1)  # read one, blocking
         n = self.serialPort.inWaiting() # look if there is more
         if n:
@@ -58,7 +58,8 @@ while 1:
         client.send("Got it\n")
         mon.serialPort.flushInput()
         mon.serialPort.write(data)
-        resp = mon.serialPort.read(1)
+        mon.serialPort.flush()
+        time.sleep(0.01)
         n = mon.serialPort.inWaiting()
         if n:
             resp = resp + mon.serialPort.read(n)
