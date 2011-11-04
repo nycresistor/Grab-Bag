@@ -1,13 +1,9 @@
 #! /bin/python
-import shlex, sys, os, time, subprocess, serial, sqlite3, random, json, multiprocessing, subprocess, math, socket, twitter
+import shlex, sys, os, time, subprocess, serial, sqlite3, random, json, multiprocessing, subprocess, math, socket
 
 #Database
 conn = sqlite3.connect('/var/www/barbot.sqlite')
 c = conn.cursor()
-
-#Initial MPlayer Command
-#cmd = "mplayer -idle -fixed-vo -framedrop -quiet -slave -autosync 0 -fs -zoom -x 760 -y 600 /home/nycr/Video/main.mov"
-#args = shlex.split(cmd)
 
 #Sayings for twitter and LCD
 #LCD says include formatting
@@ -23,17 +19,7 @@ screen = '/dev/serial/by-id/usb-FTDI_TTL232R_FTE55VLS-if00-port0'
 replay1 = [0, 4, 7, 11, 14, 18]
 replay2 = [1, 6, 10, 14, 18]
 replay3 = [0, 4, 8, 12, 16]
-
-try:
-    api = twitter.Api(consumer_key='', consumer_secret='', access_token_key='', access_token_secret='')
-except:
-    print "no twitter"
-
-def killThreads():
-    for thread in threads:
-        if not thread.is_alive():
-            threads.remove(thread)
-            
+       
 def makeDrink(args=None):
 #Make a random drink!
     drinkString = "DRINK ORDER "
@@ -193,12 +179,6 @@ def writeSpecials2(drink, oob):
             lcd.write(chr(10))
     
     time.sleep(5)
-    
-def log(text):
-    sql = "insert into logs values (NULL, %s, '%s')" % (time.time(), text)
-    c.execute(sql)
-    conn.commit()
-    #c.close()
 
 def randomLCD():
     #Print a predefined message on the LCD
@@ -345,67 +325,18 @@ def replay(spinArgs):
 
 if __name__ == '__main__':
     print " = = = = = Starting up... = = = = ="
-    
-    
+
     lcd = serial.Serial(screen, 19200)
     lcd.open()
             
     clearLCD()
     lcd.write("\n BarBot Operational")
             
-     
     serBot = serial.Serial(barBot, 9600, timeout=.1)
-    serBot.open()
-            
+    serBot.open()       
       
     slotBot = serial.Serial(slotMachine, 9600, timeout=.1)
     slotBot.open()
 
-    #p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     slotBot.flushInput()
-    log("Starting up...")
     play()
-
-def startVideo():
-    #Play a random video
-    print "= = = = = Playing new Video = = = = ="    
-    video = c.execute("SELECT * FROM videos ORDER BY played asc")
-    video = c.fetchone()
-    
-    print "Video Results: " + str(video)
-    
-    vidtime = video[3]
-    vidname = video[1]
-    
-    #Update video playcount
-    result = c.execute("UPDATE videos SET played = %s WHERE id = %s" % (video[2]+1, video[0]))
-       
-    print " = = = = = Playing Video %s = = = = =" % (vidname)
-    spawnVideo(vidname, vidtime)
-    
-def spawnVideo(vidname, vidtime):
-    #Spawn a video process, so that serial events can be read in the background
-    p = multiprocessing.Process(target=playVideo,args=[vidname, vidtime])
-    p.start()
-    print p, "Is Activated: ", p.is_alive()
-    threads.append(p)
-    killThreads()
-    
-def playVideo(video, vidtime):
-    #Play a video, wait until done, return to main.mov
-    
-    print "PLAYING " + video + " WITH TIME " + str(vidtime)
-    cmd = "loadfile /home/nycr/Video/vids/%s\n" % (video)
-    p.stdin.write(cmd)
-    
-    sleepTime = int(math.floor(vidtime))
-    
-    print "Sleeping for " + str(sleepTime) + " seconds, fool."
-    
-    time.sleep(sleepTime)
-            
-    print "Returning to Main Loop, sucker."
-    p.stdin.write("loadfile /home/nycr/Video/main.mov\n")
-    
-    clearLCD()
-    randomLCD()
