@@ -17,7 +17,7 @@ lcdSayings = {0:"\n      THIS IS\n    BAT COUNTRY!", 1:"\n      SPIN IT\n     TO
 #Serial Interfaces
 slotMachine = '/dev/serial/by-id/usb-FTDI_TTL232R_FTE3G3MI-if00-port0'
 barBot = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A900acNt-if00-port0'
-screen = '/dev/serial/by-id/usb-FTDI_TTL232R_FTDXPLJO-if00-port0'
+screen = '/dev/serial/by-id/usb-FTDI_TTL232R_FTE55VLS-if00-port0'
 
 #Possible replay wheel combinations
 replay1 = [0, 4, 7, 11, 14, 18]
@@ -38,10 +38,13 @@ def makeDrink(args=None):
 #Make a random drink!
     drinkString = "DRINK ORDER "
     
-    mult = c.execute("SELECT * FROM drinkmultiplier")
-    mult = c.fetchone()
-    mult = mult[1]
-    print "DRINK MULTIPLIER: " + str(mult)
+    try:
+        mult = c.execute("SELECT * FROM drinkmultiplier")
+        mult = c.fetchone()
+        mult = mult[1]
+        print "DRINK MULTIPLIER: " + str(mult)
+    except:
+        print "ERROR QUERYING DATABASE"
     
 ##########################    
     # EXECUTE CUSTOM ORDER
@@ -144,7 +147,7 @@ def writeSpecials(drink, oob):
         print "! ! ! ! ! ! ! ! COULD NOT CONNECT TO LCD ! ! ! ! ! ! ! !"
     time.sleep(5)
 
-def writeSpecials2(drink, oob)
+def writeSpecials2(drink, oob):
     if len(oob) > 3:
         #need the whole screen
         
@@ -195,7 +198,7 @@ def log(text):
     sql = "insert into logs values (NULL, %s, '%s')" % (time.time(), text)
     c.execute(sql)
     conn.commit()
-    c.close()
+    #c.close()
 
 def randomLCD():
     #Print a predefined message on the LCD
@@ -343,68 +346,26 @@ def replay(spinArgs):
 if __name__ == '__main__':
     print " = = = = = Starting up... = = = = ="
     
-    #Don't start until everything is connected
     
-    while(q==0):
-        #Check the LCD serial connection
-        try:
-            lcd = serial.Serial(screen, 19200)
-            lcd.open()
+    lcd = serial.Serial(screen, 19200)
+    lcd.open()
             
-            clearLCD()
-            lcd.write("\n BarBot Operational")
+    clearLCD()
+    lcd.write("\n BarBot Operational")
             
-            q=1
-    
-        except:
-            print "Could not open LCD on " + screen
-            log("Could not open LCD on " + screen)
-    
-            time.sleep(3)
-    
-    while(r==0):
-       #Check the BarBot serial connection
-        try:
-            serBot = serial.Serial(barBot, 9600, timeout=.1)
-            serBot.open()
+     
+    serBot = serial.Serial(barBot, 9600, timeout=.1)
+    serBot.open()
             
-            r=1
-            
-        except:
-            print "Could not open BarBot on " + barBot
-            log("Could not open BarBot on " + barBot)
-            
-            time.sleep(3)
-            
-    while(s==0):
-        #Check the Slot Machine serial connection
-        try:
-            slotBot = serial.Serial(slotMachine, 9600, timeout=.1)
-            slotBot.open()
-            
-            s=1
-            
-        except:
-            print "Could not open SlotMachine on " + slotMachine
-            log("Could not open Slot Machine on " + slotMachine)
-            
-            time.sleep(3)
+      
+    slotBot = serial.Serial(slotMachine, 9600, timeout=.1)
+    slotBot.open()
 
     #p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     slotBot.flushInput()
     log("Starting up...")
     play()
 
-
-
-
-
-
-
-
-
-
-        
 def startVideo():
     #Play a random video
     print "= = = = = Playing new Video = = = = ="    
