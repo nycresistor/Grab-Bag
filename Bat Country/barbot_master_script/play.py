@@ -20,73 +20,7 @@ replay1 = [0, 4, 7, 11, 14, 18]
 replay2 = [1, 6, 10, 14, 18]
 replay3 = [0, 4, 8, 12, 16]
        
-def makeDrink(args=None):
-#Make a random drink!
-    drinkString = "DRINK ORDER "
-    
-    try:
-        mult = c.execute("SELECT * FROM drinkmultiplier")
-        mult = c.fetchone()
-        mult = mult[1]
-        print "DRINK MULTIPLIER: " + str(mult)
-    except:
-        print "ERROR QUERYING DATABASE"
-    
-##########################    
-    # EXECUTE CUSTOM ORDER
-    custom = c.execute("SELECT * FROM custom WHERE custom.done is NULL ORDER BY id")
-    custom = c.fetchone()
-    print "CUSTOM RESULT: " + str(custom)
-    
-    if custom is not None:
-        print "CUSTOM ORDER: %s" % (custom[1])
-        drinknum = custom[1]
-        result = c.execute("UPDATE custom SET done='True' WHERE id = %s" % (custom[0]))
-        
-    else:
-        #print "RANDOM DRINK" 
-        count = c.execute("SELECT COUNT (*) from drinks")
-        count = c.fetchone()
-        
-        #RANDOM DRINK
-        drinknum = random.randint(1,count[0])
-##########################
-    
-    result = c.execute("SELECT name FROM drinks WHERE id = %s" % (drinknum))
-    drinkname = c.fetchone()[0]
-    print "Making #" + str(drinknum) + " " + drinkname
-    
-    results = c.execute("SELECT * FROM drinkcommands LEFT OUTER JOIN ingrediants ON drinkcommands.ingrediant=ingrediants.id WHERE drinknum = %s ORDER BY id" % (drinknum))
-    commands = c.fetchall()
-    
-    #print commands
 
-##########################
-#            SEND COMMANDS
-    oob = []
-    for command in commands:
-        if command[9] != "True":
-            #print str(command[3]) + " " + command[4] + " " + command[7]
-            drinkString += (str(command[2]) + ":" + str(int(command[3])*mult) + " ")
-        else:
-            oob.append(str(command[3]) + " " + command[4] + " " + command[7])
-            
-    print drinkString
-    try:
-        serBot.write(drinkString + "\n")
-    except:
-        print "! ! ! ! ! ! ! ! COULD NOT WRITE TO BARBOT ! ! ! ! ! ! ! !"
-        
-    clearLCD()
-    writeSpecials(str(drinkname), oob)    
-    
-    log("Mixing drink: " + drinkname + " (%s)"%(str(drinknum)))
-    
-    x = random.randint(0, len(twitterSayings)-1)
-    try:
-        api.PostUpdate("I just mixed a '%s'! %s" % (drinkname, twitterSayings[x]))
-    except:
-        pass
 
 def writeSpecials(drink, oob):
     x = 0
@@ -133,53 +67,69 @@ def writeSpecials(drink, oob):
         print "! ! ! ! ! ! ! ! COULD NOT CONNECT TO LCD ! ! ! ! ! ! ! !"
     time.sleep(5)
 
-def writeSpecials2(drink, oob):
-    if len(oob) > 3:
-        #need the whole screen
-        
-        lcd.write(chr(0xFE) + chr(0x48))
-        lcd.write(drink.center(20))
-        lcd.write(chr(10))
-        lcd.write("ADD:".center(20))
-        lcd.write(chr(10))
-        time.sleep(4)
-
-        clearLCD()
-
-        for inst in oob:
-            lcd.write(str(inst))
-            if x < len(oob)-1 and len(str(inst)) < 20:
-                lcd.write(Chr(10))
-                x+=1
-        
-    elif len(oob) > 2:
-        #can display name + 'add'
-        
-        drinkLine = ""  
-        if len(drink) <= 15:
-            for x in range(0, 20):
-                if x > 16:
-                    drinkLine[x] = "ADD:"[x-17]
-                else: 
-                    drinkLine[x] = drink.ljust(20)[x]
-        
-    elif len(oob) <= 2:
-        #can display name, 'add', and instructions
-
-        lcd.write(chr(0xFE) + chr(0x48))
-        lcd.write(drink)
-        lcd.write(chr(10))
-
-        lcd.write(chr(0xFE) + chr(0x48))
-        lcd.write("Please Add:")
-        lcd.write(chr(10)) 
-        
-        for inst in oob:
-            lcd.write(str(inst))
-            lcd.write(chr(10))
+def getDrinkCommands(drinknum):
+	c.execute("SELECT * FROM drinkcommands LEFT OUTER JOIN ingrediants ON drinkcommands.ingrediant=ingrediants.id WHERE drinknum = %s ORDER BY id" % (drinknum))
+    commands = c.fetchall()
     
-    time.sleep(5)
+def getRandomOrder():
+	c.execute("SELECT COUNT (*) from drinks")
+    count = c.fetchone()
+    
+    drinknum = random.randint(1,count[0])
+    result = c.execute("SELECT name FROM drinks WHERE id = %s" % (drinknum))
+    drinkname = c.fetchone()[0]
+    
+    return drinknum, drinkname
+    
+def getCustomOrder():
+	c.execute("SELECT * FROM custom WHERE custom.done is NULL ORDER BY id")
+    custom = c.fetchone()
+    if custom is None: return None, None
+    
+    drinknum = custom[1]
+    drinkname = c.execute("SELECT name FROM drinks WHERE id = %s" % (drinknum))
+    
+    print "Custom Drink Order Found: [%s] #%s - %s" % (str(custom[0]), str(drinknum), drinkname)
+    
+    return drinknum, drinkname
+    
+def getDrinkMultiplier():
+    mult = c.execute("SELECT * FROM drinkmultiplier")
+    mult = c.fetchone()
+	mult = mult[1]
+    print "Drink Multiplier: " + str(mult)
+    return mult
+    
+def makeDrink(args=None):
+#Make a random drink!
+    drinkString = "DRINK ORDER "
+    
+	drinkMultiplier = getDrinkMultiplier()
+    
+    drinknum, drinkname = getCustomOrder()
+    if drinkNum:
+        result = c.execute("UPDATE custom SET done='True' WHERE id = %s" % (custom[0]))
+    else:
+		drinknum, drinkname = getRandomOrder()
 
+    print "Making #%s - %s"%(str(drinknum), drinkname)
+    
+    commands = getDrinkCommands(drinknum)
+
+    mixers = []
+    for command in commands:
+    	# Alcohol? Add it to the drink order
+        if command[9] != "True":
+            drinkString += (str(command[2]) + ":" + str(int(command[3])*mult) + " ")
+        else: # Mixer? Add it to the LCD screen
+            mixers.append(str(command[3]) + " " + command[4] + " " + command[7])
+            
+    print drinkstring
+    serBot.write(drinkString + "\n")
+
+    clearLCD()
+    writeSpecials(str(drinkname), mixers)    
+        
 def printLCDMessage(x = random.randint(0, len(lcdSayings)-1)):
     #Print a predefined message on the LCD
     try:
