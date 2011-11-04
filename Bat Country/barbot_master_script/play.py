@@ -20,51 +20,35 @@ replay1 = [0, 4, 7, 11, 14, 18]
 replay2 = [1, 6, 10, 14, 18]
 replay3 = [0, 4, 8, 12, 16]
        
-
-
-def writeSpecials(drink, oob):
+def writeSpecials(drink, mixers):
     x = 0
     
-    try:
-        lcd.write(chr(0xFE)+chr(0x48))
-        lcd.write(drink)
-        lcd.write(chr(10))
-        time.sleep(2)
-        
-        if len(oob) > 2:
-            lcd.write("\nADD:")
-            time.sleep(1)
-            
-            clearLCD()
-            #time.sleep(.5)
-            lcd.write(drink)
-            lcd.write(chr(10))
-            lcd.write("\n     ADD:")
-            time.sleep(.5)
-            clearLCD()
-            #time.sleep(.5)
-            
-            lcd.write(drink)
-            lcd.write(chr(10))
-            lcd.write("\n          ADD:")
-            time.sleep(.5)
-            clearLCD()
-            #time.sleep(.5)
-            
-            #clearLCD()
-            
-            for inst in oob:
-                lcd.write(str(inst))
-                if x < len(oob)-1 and len(str(inst)) < 20:
-                    lcd.write(chr(10))
-                x += 1
-        elif len(oob) > 0:
-            lcd.write("ADD: \n")
-            for inst in oob:
-                lcd.write(str(inst))
-                lcd.write(chr(10))
-    except:
-        print "! ! ! ! ! ! ! ! COULD NOT CONNECT TO LCD ! ! ! ! ! ! ! !"
+	lcd.write(chr(0xFE)+chr(0x48))
+	lcd.write(drink)
+	lcd.write(chr(10))
+	time.sleep(2)
+	
+	if len(mixers) > 2:
+
+		clearLCD()
+		lcd.write(drink)
+		lcd.write(chr(10))
+		lcd.write("\n     ADD:")
+		time.sleep(.5)
+		clearLCD()
+
+		for mixer in mixers:
+			lcd.write(str(mixer))
+			if x < len(mixers)-1 and len(str(mixer)) < 20:
+				lcd.write(chr(10))
+			x += 1
+			
+	elif len(mixers) > 0:
+		lcd.write("ADD: \n")
+		for mixer in mixers:
+			lcd.write(str(mixer))
+			lcd.write(chr(10))
+
     time.sleep(5)
 
 def getDrinkCommands(drinknum):
