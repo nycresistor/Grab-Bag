@@ -1,5 +1,5 @@
 #! /bin/python
-import shlex, sys, os, time, subprocess, serial, sqlite3, random, json, multiprocessing, subprocess, math, socket
+import sys, os, time, serial, sqlite3, random, json, math, socket
 
 #Database
 conn = sqlite3.connect('/var/www/barbot.sqlite')
@@ -180,125 +180,16 @@ def writeSpecials2(drink, oob):
     
     time.sleep(5)
 
-def randomLCD():
+def printLCDMessage(x = random.randint(0, len(lcdSayings)-1)):
     #Print a predefined message on the LCD
-    x = random.randint(0, len(lcdSayings)-1)
-    
     try:
         clearLCD()
         lcd.write(lcdSayings[x])
     except:
-        print "! ! ! ! ! ! ! ! COULD NOT CONNECT TO LCD ! ! ! ! ! ! ! !"
+        print "Error: Could not connect to the LCD screen."
     
 def clearLCD():
     lcd.write(chr(0xFE)+chr(0x58))       
-
-def play():
-    global last_received
-    last_received = ""
-    buffer = ''
-    lcdbuffer = ''
-    clearLCD()
-    lcd.write("IP ADDRESS:\n")
-    
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("google.com",80))
-        ip = str(s.getsockname()[0])
-    except:
-        ip = "0.0.0.0"
-
-    print ip
-    lcd.write(ip)
-    
-    time.sleep(3)
-    print " = = = = = Waiting for Serialz = = = = =" 
-    
-    #Print a random LCD message
-    randomLCD()
-    
-    while True:
-        try:
-            buffer = buffer + slotBot.read(slotBot.inWaiting())
-        except:
-            print "! ! ! ! ! ! ! ! COULD NOT READ FROM SLOT MACHINE ! ! ! ! ! ! ! !"
-        
-        try:
-            lcdbuffer = lcdbuffer + lcd.read(lcd.inWaiting())
-        except:
-            print "! ! ! ! ! ! ! ! COULD NOT READ FROM LCD ! ! ! ! ! ! ! !"
-        
-        if "A" in lcdbuffer:
-            lcdbuffer = ''
-            clearLCD()
-            lcd.write("IP ADDRESS:\n")
-            lcd.write(ip + "\n\n")
-            lcd.write("Enter Start Number")
-            time.sleep(4)
-            
-            lcdbuffer = lcd.read(lcd.inWaiting())
-            startNum = len(lcdbuffer)
-            if (startNum == 0):
-                startNum = 1
-            print startNum
-            lcdbuffer = ''
-            
-            for num in range(startNum, 13):
-                serBot.write("DRINK ORDER ")
-                serBot.write(str(num) + ":6000\n")
-                
-                print "Priming Solenoid " + str(num)
-                clearLCD()
-                lcd.write("Priming Solenoid " + str(num))
-                
-                time.sleep(12)
-                lcdbuffer = lcdbuffer + lcd.read(lcd.inWaiting())
-                
-                if "A" in lcdbuffer:
-                    lcdbuffer = ''
-                    print "End Priming"
-                    clearLCD()
-                    lcd.write("End Priming")
-                    time.sleep(1)
-                    randomLCD()
-                    break
-                
-            
-        if '\n' in buffer:
-            lines = buffer.split('\n')
-            received = lines[-2]
-            if (received == last_received):
-                continue
-            else:
-                last_received = received
-            buffer = lines[-1]
-            print " = = = = = CMD Received: " + last_received + " = = = = ="
-            
-            if "COIN" in last_received: #Someone put a coin in!
-                print "COIN RECEIVED!"
-                try:
-                    slotBot.write("C\n")
-                    time.sleep(.2)
-                    slotBot.write("C\n")
-                    time.sleep(.2)
-                    slotBot.write("C\n")
-                except:
-                    print "! ! ! ! ! ! ! ! COULD NOT CONNECT TO SLOT MACHINE ! ! ! ! ! ! ! !"
-                    
-            if "SPIN RESULT" in last_received: #Someone spun!
-                spinArgs = last_received.split(" ")
-                
-                if replay(spinArgs) is True:
-                    print "GOT A REPLAY!"
-                else:
-                    print "NOT A REPLAY"
-                    #startVideo()
-                    makeDrink()
-                    time.sleep(3)
-                    clearLCD()
-                    randomLCD()
-            
-        time.sleep(.1)
 
 def replay(spinArgs):
     #Check for possible replay combinations
@@ -323,20 +214,90 @@ def replay(spinArgs):
     else:
         return False
 
-if __name__ == '__main__':
-    print " = = = = = Starting up... = = = = ="
-
-    lcd = serial.Serial(screen, 19200)
-    lcd.open()
-            
+def play():
+    global last_received
+    last_received = ""
+    buffer = ''
+    lcdbuffer = ''
     clearLCD()
-    lcd.write("\n BarBot Operational")
-            
-    serBot = serial.Serial(barBot, 9600, timeout=.1)
-    serBot.open()       
-      
-    slotBot = serial.Serial(slotMachine, 9600, timeout=.1)
-    slotBot.open()
+    lcd.write("IP ADDRESS:\n")
+    
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("google.com",80))
+        ip = str(s.getsockname()[0])
+    except:
+        ip = "0.0.0.0"
 
-    slotBot.flushInput()
+    lcd.write(ip)
+    
+    time.sleep(3)
+    print "Waiting for Serial Input..." 
+    
+    printLCDMessage()
+    
+    while True:
+
+    	buffer = buffer + slotBot.read(slotBot.inWaiting())
+
+        if '\n' in buffer:
+            lines = buffer.split('\n')
+            received = lines[-2]
+            if (received == last_received):
+                continue
+            else:
+                last_received = received
+            buffer = lines[-1]
+            print "Slot machine command: %s"%(last_received)
+            
+            if "COIN" in last_received: #Someone put a coin in!
+                print "Coin received."
+                
+                slotBot.write("C\n")
+                time.sleep(.2)
+                slotBot.write("C\n")
+                time.sleep(.2)
+                slotBot.write("C\n")
+                    
+            if "SPIN RESULT" in last_received: #Someone spun!
+                spinArgs = last_received.split(" ")
+                
+                if replay(spinArgs) is True:
+                    print "Got a replay!"
+                else:
+                    print "Not a replay."
+                    makeDrink()
+                    time.sleep(3)
+                    clearLCD()
+                    printLCDMessage()
+            
+        time.sleep(.1)
+
+if __name__ == '__main__':
+    print "NYC Resistor BarBot Initializing."
+  	
+  	try:
+    	serBot = serial.Serial(barBot, 9600, timeout=.1)
+    	serBot.open()
+    except:
+    	print "Error: Could not connect to the robot bartender."
+    	return
+    
+    try:
+    	slotBot = serial.Serial(slotMachine, 9600, timeout=.1)
+    	slotBot.open()
+    	slotBot.flushInput()
+    except:
+    	print "Error: Could not connect to the slot machine interface."
+    	return
+    	
+    try:
+    	lcd = serial.Serial(screen, 19200)
+    	lcd.open()     
+    	clearLCD()
+    	lcd.write("\n BarBot Operational")
+    except:
+    	print "Error: Could not connect to the LCD Screen."
+    	return
+    	
     play()
