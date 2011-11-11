@@ -27,7 +27,7 @@ SOMETHING ABOUT MIDI MESSAGES
 #####################################################################################################################################################
 
 HARDWARE NOTE:
-The Midi Socket is connected to arduino RX through an opto-isolator to invert the midi signal and seperate the circuits of individual instruments.
+The Midi Socket is connected to arduino RX through an opto-isolator to invert the midi dmxPinnal and seperate the circuits of individual instruments.
 connect 8 leds to pin2-pin9 on your arduino.
 
 ####################################################################################################################################################
@@ -37,12 +37,18 @@ connect 8 leds to pin2-pin9 on your arduino.
 
 #include "pins_arduino.h"
 
+#define ALL_ON 1
+#define FADER_CONTROL 2
+#define ALL_OFF 0
+#define NUM_CHANNELS 8
+
 //variables setup
 byte incomingByte;
 byte note;
 byte velocity;
 
-int sig = 11; // signal
+int dmxPin = 9; // dmxPinnal
+int switchPin = 2;     // the number of the pushbutton pin
 
 int value = 0;
 int valueadd = 3;
@@ -53,22 +59,47 @@ int action=2; //0 =note off ; 1=note on ; 2= nada
 
 int param=0;
 int params[2];
-int dmx[512];
+char dmx[NUM_CHANNELS];
+char dmxPresetAllOn[NUM_CHANNELS] = {255, 255, 255, 255, 255, 255, 255, 255};
+char dmxPresetAllOff[NUM_CHANNELS] = {0,0,0,0,0,0,0,0};
 
+int mode = ALL_OFF;
+int prevMode = ALL_OFF;
+
+boolean firstSwitch = true;
+boolean switchState = LOW;
+boolean reading = LOW;
 
 //setup: declaring iputs and outputs and begin serial
 void setup() {
   pinMode(statusLed,OUTPUT);   // declare the LED's pin as output
-  pinMode(sig, OUTPUT);
+  pinMode(dmxPin, OUTPUT);
+  pinMode(switchPin, INPUT);
   //start serial with midi baudrate 31250 or 38400 for debugging
 
   Serial.begin(31250);
-
-  digitalWrite(statusLed,HIGH);  
 }
 
 //loop: wait for serial data, and interpret the message
 void loop () {
+  
+  reading = digitalRead(switchPin);
+  if (reading != switchState) {
+    if (reading == HIGH) mode = ALL_ON;
+    else if (reading == LOW) mode = ALL_OFF;
+    switchState = reading; 
+  }
+  
+  if (mode == ALL_ON) {
+    for (int x = 0; x < NUM_CHANNELS; x++) {
+      dmx[x] = dmxPresetAllOn[x];
+    } 
+  } else if (mode == ALL_OFF) {
+    for (int x = 0; x < NUM_CHANNELS; x++) {
+      dmx[x] = dmxPresetAllOff[x];
+    } 
+  }
+
   if (Serial.available() > 0) {
     // read the incoming byte:
     incomingByte = Serial.read();
@@ -80,7 +111,7 @@ void loop () {
       if (param == 2) {
         param = 0;
         action = 0;
-        controller();
+        dmx[params[0]] = map(params[1], 0, 127, 20, 255);
       }
     }
     
@@ -88,40 +119,30 @@ void loop () {
     if (incomingByte== 0xB0){ // CC
        
        action = 1;
+       mode = FADER_CONTROL;
        
     }
   }
   
   // sending the break (the break can be between 88us and 1sec)
-  digitalWrite(sig, LOW);
+  digitalWrite(dmxPin, LOW);
 
   delay(10);
 
   // sending the start byte
-  shiftDmxOut(sig, 0);
+  shiftDmxOut(dmxPin, 0);
   
-  for (int x = 1; x <= 14; x++)
+  for (int x = 0; x < 20; x++)
   {
-    shiftDmxOut(sig, dmx[x] * 2);
+    shiftDmxOut(dmxPin, dmx[x]);
   }
-//  /***** sending the dmx signal end *****/
+//  /***** sending the dmx dmxPinnal end *****/
 //
 //  value += valueadd;
 //  if ((value == 0) || (value == 255))
 //    {
 //      valueadd *= -1;
 //    }
-}
-
-void controller() {
-  dmx[params[0]] = params[1];
-}
-
-void blink(){
-  digitalWrite(statusLed, HIGH);
-  delay(100);
-  digitalWrite(statusLed, LOW);
-  delay(100);
 }
 
 /* Sends a DMX byte out on a pin.  Assumes a 16 MHz clock.
@@ -194,3 +215,4 @@ _SFR_BYTE(_SFR_IO8(portNumber)) |= pinMask;
 // reenable interrupts.
 sei();
 }
+
