@@ -1,5 +1,3 @@
-
-
 /* Midi In Basic  0.2 // kuki 8.2007
  *
  * -----------------
@@ -42,20 +40,12 @@ connect 8 leds to pin2-pin9 on your arduino.
 #define ALL_OFF 0
 #define NUM_CHANNELS 8
 
-//variables setup
 byte incomingByte;
-byte note;
-byte velocity;
 
-int dmxPin = 9; // dmxPinnal
-int switchPin = 2;     // the number of the pushbutton pin
+int dmxPin = 9;
+int switchPin = 2;
 
-int value = 0;
-int valueadd = 3;
-
-int statusLed = 13;   // select the pin for the LED
-
-int action=2; //0 =note off ; 1=note on ; 2= nada
+int action=2;
 
 int param=0;
 int params[2];
@@ -64,23 +54,17 @@ char dmxPresetAllOn[NUM_CHANNELS] = {255, 255, 255, 255, 255, 255, 255, 255};
 char dmxPresetAllOff[NUM_CHANNELS] = {0,0,0,0,0,0,0,0};
 
 int mode = ALL_OFF;
-int prevMode = ALL_OFF;
 
-boolean firstSwitch = true;
 boolean switchState = LOW;
 boolean reading = LOW;
 
-//setup: declaring iputs and outputs and begin serial
 void setup() {
-  pinMode(statusLed,OUTPUT);   // declare the LED's pin as output
   pinMode(dmxPin, OUTPUT);
   pinMode(switchPin, INPUT);
-  //start serial with midi baudrate 31250 or 38400 for debugging
 
   Serial.begin(31250);
 }
 
-//loop: wait for serial data, and interpret the message
 void loop () {
   
   reading = digitalRead(switchPin);
@@ -132,17 +116,10 @@ void loop () {
   // sending the start byte
   shiftDmxOut(dmxPin, 0);
   
-  for (int x = 0; x < 20; x++)
+  for (int x = 0; x < 10; x++)
   {
     shiftDmxOut(dmxPin, dmx[x]);
   }
-//  /***** sending the dmx dmxPinnal end *****/
-//
-//  value += valueadd;
-//  if ((value == 0) || (value == 255))
-//    {
-//      valueadd *= -1;
-//    }
 }
 
 /* Sends a DMX byte out on a pin.  Assumes a 16 MHz clock.
