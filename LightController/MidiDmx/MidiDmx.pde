@@ -45,7 +45,7 @@ byte incomingByte;
 int dmxPin = 9;
 int switchPin = 2;
 
-int action=2;
+boolean receivedCommand = false;
 
 int param=0;
 int params[2];
@@ -88,24 +88,21 @@ void loop () {
     // read the incoming byte:
     incomingByte = Serial.read();
     
-    if (action == 1) {
+    if (receivedCommand) {
       params[param] = incomingByte;
       param++;
       
       if (param == 2) {
         param = 0;
-        action = 0;
-        dmx[params[0]] = map(params[1], 0, 127, 20, 255);
+        receivedCommand = false;
+        
+        if (params[1] >= dmx[params[0]]) mode = FADER_CONTROL;
+        if (mode == FADER_CONTROL) dmx[params[0]] = map(params[1], 0, 127, 20, 255);
       }
     }
     
-    // wait for as status-byte, channel 1, note on or off
-    if (incomingByte== 0xB0){ // CC
-       
-       action = 1;
-       mode = FADER_CONTROL;
-       
-    }
+    // wait for as status-byte, channel 1, continuous controller message
+    if (incomingByte== 0xB0) receivedCommand = true;
   }
   
   // sending the break (the break can be between 88us and 1sec)
