@@ -35,9 +35,8 @@ connect 8 leds to pin2-pin9 on your arduino.
 
 #include "pins_arduino.h"
 
-#define ALL_ON 1
-#define FADER_CONTROL 2
-#define ALL_OFF 0
+#define SWITCH_CONTROL true
+#define FADER_CONTROL false
 #define NUM_CHANNELS 8
 
 byte incomingByte;
@@ -50,10 +49,14 @@ boolean receivedCommand = false;
 int param=0;
 int params[2];
 char dmx[NUM_CHANNELS];
-char dmxPresetAllOn[NUM_CHANNELS] = {255, 255, 255, 255, 255, 255, 255, 255};
-char dmxPresetAllOff[NUM_CHANNELS] = {0,0,0,0,0,0,0,0};
 
-int mode = ALL_OFF;
+//char dmxPresetAllOn[NUM_CHANNELS] = {255, 255, 255, 255, 255, 255, 255, 255};
+//char dmxPresetAllOff[NUM_CHANNELS] = {0,0,0,0,0,0,0,0};
+
+char dmxFull = 255;
+char dmxOff = 0;
+
+boolean mode[NUM_CHANNELS];
 
 boolean switchState = LOW;
 boolean reading = LOW;
@@ -63,27 +66,26 @@ void setup() {
   pinMode(switchPin, INPUT);
 
   Serial.begin(31250);
+  
+  for (int x = 0; x < NUM_CHANNELS; x++) {
+    mode[x] = SWITCH_CONTROL;
+  }
 }
 
 void loop () {
   
   reading = digitalRead(switchPin);
   if (reading != switchState) {
-    if (reading == HIGH) mode = ALL_ON;
-    else if (reading == LOW) mode = ALL_OFF;
+    int switchedValue;
+    if (reading == HIGH)     switchedValue = dmxFull;
+    else if (reading == LOW) switchedValue = dmxOff;
+    for (int x=0; x<NUM_CHANNELS; x++) {
+      mode[x] = SWITCH_CONTROL;
+      dmx[x] = switchedValue;
+    }
     switchState = reading; 
   }
   
-  if (mode == ALL_ON) {
-    for (int x = 0; x < NUM_CHANNELS; x++) {
-      dmx[x] = dmxPresetAllOn[x];
-    } 
-  } else if (mode == ALL_OFF) {
-    for (int x = 0; x < NUM_CHANNELS; x++) {
-      dmx[x] = dmxPresetAllOff[x];
-    } 
-  }
-
   if (Serial.available() > 0) {
     // read the incoming byte:
     incomingByte = Serial.read();
@@ -96,8 +98,12 @@ void loop () {
         param = 0;
         receivedCommand = false;
         
-        if (params[1] >= dmx[params[0]]) mode = FADER_CONTROL;
-        if (mode == FADER_CONTROL) dmx[params[0]] = map(params[1], 0, 127, 20, 255);
+        char chan = params[0];
+        char brightness = map(params[1], 0, 127, 20, 255);
+        
+        mode[chan] = FADER_CONTROL;
+        //if (brightness = dmx[chan]) mode[chan] = FADER_CONTROL;
+        if (mode[chan] == FADER_CONTROL) dmx[chan] = brightness;
       }
     }
     
