@@ -34,6 +34,7 @@ connect 8 leds to pin2-pin9 on your arduino.
  */
 
 #include "pins_arduino.h"
+#include <EEPROM.h>
 
 #define SWITCH_CONTROL true
 #define FADER_CONTROL false
@@ -70,6 +71,11 @@ void setup() {
   for (int x = 0; x < NUM_CHANNELS; x++) {
     mode[x] = SWITCH_CONTROL;
   }
+  
+  for (int x = 0; x < NUM_CHANNELS; x++) {
+    dmx[x] = EEPROM.read(x); 
+  }
+  
 }
 
 void loop () {
