@@ -51,13 +51,8 @@ int param=0;
 int params[2];
 char dmx[NUM_CHANNELS];
 
-//char dmxPresetAllOn[NUM_CHANNELS] = {255, 255, 255, 255, 255, 255, 255, 255};
-//char dmxPresetAllOff[NUM_CHANNELS] = {0,0,0,0,0,0,0,0};
-
 char dmxFull = 255;
 char dmxOff = 0;
-
-boolean mode[NUM_CHANNELS];
 
 boolean switchState = LOW;
 boolean reading = LOW;
@@ -67,10 +62,6 @@ void setup() {
   pinMode(switchPin, INPUT);
 
   Serial.begin(31250);
-  
-  for (int x = 0; x < NUM_CHANNELS; x++) {
-    mode[x] = SWITCH_CONTROL;
-  }
   
   for (int x = 0; x < NUM_CHANNELS; x++) {
     dmx[x] = EEPROM.read(x); 
@@ -86,9 +77,9 @@ void loop () {
     if (reading == HIGH)     switchedValue = dmxFull;
     else if (reading == LOW) switchedValue = dmxOff;
     for (int x=0; x<NUM_CHANNELS; x++) {
-      mode[x] = SWITCH_CONTROL;
       dmx[x] = switchedValue;
     }
+    saveState();
     switchState = reading; 
   }
   
@@ -106,10 +97,8 @@ void loop () {
         
         char chan = params[0];
         char brightness = map(params[1], 0, 127, 20, 255);
-        
-        mode[chan] = FADER_CONTROL;
-        //if (brightness = dmx[chan]) mode[chan] = FADER_CONTROL;
-        if (mode[chan] == FADER_CONTROL) dmx[chan] = brightness;
+        dmx[chan] = brightness;
+        saveState();
       }
     }
     
@@ -129,6 +118,14 @@ void loop () {
   {
     shiftDmxOut(dmxPin, dmx[x]);
   }
+}
+
+void saveState() {
+  
+  for (int x = 0; x < NUM_CHANNELS; x++) {
+    EEPROM.write(x, dmx[x]); 
+  }
+ 
 }
 
 /* Sends a DMX byte out on a pin.  Assumes a 16 MHz clock.
