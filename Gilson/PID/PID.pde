@@ -4,17 +4,26 @@
 #include<stdint.h>
 #include <PID_v1.h>
 
-volatile int32_t encoder0Pos = 0;
-uint16_t control;
+volatile int64_t encoder0Pos = 0;
+int64_t oldPos,velocity;
+uint32_t lasttime, currenttime;
+
+int16_t commanded_v;
+int16_t commanded_a;
 
 //Define Variables we'll be connecting to
-double Setpoint, Input, Output;
+double Setpoint_p, Input_p, Output_p;
+double Setpoint_v, Input_v, Output_v;
 
 //Define the aggressive and conservative Tuning Parameters
-double aggKp=.5, aggKi=0.2, aggKd=1;
-double consKp=.1, consKi=0.04, consKd=0.03;
-double range=20.0;
-PID myPID(&Input, &Output, &Setpoint, consKp, consKi, consKd, DIRECT);
+double consKp_p=.2, consKi_p=0.05, consKd_p=0.1;
+double consKp_v=.6, consKi_v=0.00, consKd_v=0.0;
+
+int16_t max_a=15;
+int16_t max_v=2048;
+
+PID myPID_p(&Input_p, &Output_p, &Setpoint_p, consKp_p, consKi_p, consKd_p, DIRECT);
+PID myPID_v(&Input_v, &Output_v, &Setpoint_v, consKp_v, consKi_v, consKd_v, DIRECT);
 
 void setup() {
   pinMode(encoder0PinA, INPUT); 
@@ -25,41 +34,51 @@ void setup() {
 // encoder pin on interrupt 1 (pin 3)
   attachInterrupt(1, doEncoderB, CHANGE);  
   Serial.begin (119200);
-  Setpoint = 10000;
+  Setpoint_p = 10000;
+  Setpoint_v = 0;
+  oldPos=0;
+  velocity=0;
+  currenttime=lasttime=millis();
   //turn the PID on
-  myPID.SetMode(AUTOMATIC);
+  myPID_p.SetMode(AUTOMATIC);
+  myPID_v.SetMode(AUTOMATIC);
 }
 void loop(){ //Do stuff here 
-  Input = encoder0Pos;
-  
-  double gap = abs(Setpoint-Input); //distance away from setpoint
-  
-  if(1)
-  {  //we're close to setpoint, use conservative tuning parameters
-    myPID.SetTunings(consKp, consKi, consKd);
+  Input_p = encoder0Pos;
+  currenttime=millis();
+  if((currenttime-lasttime)>10){
+    velocity=Input_p-oldPos;
+    Input_v=(Input_v*.8)+(velocity*.2);
+    oldPos=Input_p;
+    lasttime=currenttime;
+    myPID_v.Compute();
   }
-  else
-  {
-     //we're far from setpoint, use aggressive tuning parameters
-     myPID.SetTunings(aggKp, aggKi, aggKd);
-  }
+  double gap = abs(Setpoint_p-Input_p); //distance away from setpoint
+  double v_diff = abs(Setpoint_v-Input_v);
   
-  myPID.Compute();
-  control=128+5+range;
-  control=control-(Output/255.0*(range*2));
-
-  Serial.print(Output);
-  Serial.print(" ");
-  Serial.print(control);
-  Serial.print(" ");
-  Serial.println(encoder0Pos);
-  analogWrite(OUTPUT_PIN,control);
+  myPID_p.Compute();
+  
+  commanded_v=(Output_p/255.0)*(max_v*2)-max_v;
+  Setpoint_v=commanded_v;
+  
+  
+  commanded_a=(Output_v/255.0)*(max_a*2)-max_a;
+  
+  Serial.print("Accel Out:");
+  Serial.print(commanded_a);
+  Serial.print(" Velocity Command:");
+  Serial.print(commanded_v);
+  Serial.print(" Velocity:");
+  Serial.print(Input_v);
+  Serial.print(" Position:");
+  Serial.println((int32_t)encoder0Pos);
+  analogWrite(OUTPUT_PIN,128-(commanded_a));
   if (Serial.available()){
     char C = Serial.read();
     if (C == '-'){
-       Setpoint=Setpoint - 1000;
+       Setpoint_p=Setpoint_p - 1000;
     }else if (C == '+'){
-      Setpoint=Setpoint + 1000;
+      Setpoint_p=Setpoint_p + 1000;
     }      
   }
 }
