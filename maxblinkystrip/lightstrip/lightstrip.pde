@@ -36,6 +36,8 @@
   Green = CKI
   Red = SDI
  */
+#include <EEPROM.h>
+
 
 int SDI = 2; //Red wire (not the red 5V wire!)
 int CKI = 3; //Green wire
@@ -46,6 +48,9 @@ long strip_colors[STRIP_LENGTH];
 
 long orange = 0xFF3000;
 long pink = 0xFF0030;
+long red = 0xFF0000;
+long blue = 0x0000FF;
+long white = 0xFFFFFF;
 
 int mode = 0;
 
@@ -57,20 +62,42 @@ void setup() {
   //Clear out the array
   for(int x = 0 ; x < STRIP_LENGTH ; x++)
     strip_colors[x] = 0;
-    
-  randomSeed(analogRead(0));
   
   Serial.begin(9600);
   Serial.println("Hello!");
+
+  
+  int modifier = EEPROM.read(0);
+  if (modifier == 255 || modifier == 4) modifier = 0;
+  
+  Serial.print("Mod: ");
+  Serial.println(modifier);
+  
+  if (modifier) {
+  for (int x=0; x < modifier; x++) {
+    orange = (orange >> 1) & 0x7f7f7f;
+    pink = (pink >> 1) & 0x7f7f7f;
+    white = (white >> 1) & 0x7f7f7f;
+    blue = (blue >> 1) & 0x7f7f7f;
+    red = (red >>1 ) & 0x7f7f7f;
+  }
+  
+  }
+  EEPROM.write(0, modifier + 1);
+  
+
+  
+  
+  orange = (orange >> 1) & 0x7f7f7f;
+  pink = (pink >> 1) & 0x7f7f7f;
+  
+  orange = (orange >> 1) & 0x7f7f7f;
+  pink = (pink >> 1) & 0x7f7f7f;
 }
 
 void loop() {
   //Pre-fill the color array with known values
-  strip_colors[0] = 0xFF0000; //Bright Red
-  strip_colors[1] = 0x00FF00; //Bright Green
-  strip_colors[2] = 0x0000FF; //Bright Blue
-  strip_colors[3] = 0x010000; //Faint red
-  strip_colors[4] = 0x800000; //1/2 red (0x80 = 128 out of 256)
+
   post_frame(); //Push the current color frame to the strip
   
   delay(500);
@@ -90,7 +117,6 @@ void loop() {
      case 6: cylon();
      case 7: blinkstream();
      case 8: crazystrobe();
-     case 9: 
      case 9: mode = 0; 
       
       
@@ -107,7 +133,7 @@ void crazystrobe(void) {
  for (int y=0; y < 50; y++) {
   
    if (y % 4 == 0) color = orange;
-   else if (y % 4 ==1 || y % 4 == 3) color = 0xFFFFFF;
+   else if (y % 4 ==1 || y % 4 == 3) color = white;
    else color = pink;
     
    setAll(color);
@@ -194,7 +220,7 @@ void popo(void) {
   
   for (int y=0; y < 10; y++) {
 
-    long color = (y % 2 ==0)? 0xFF0000 : 0x0000FF;
+    long color = (y % 2 ==0)? red : blue;
      
      setAll(color);
      
@@ -306,9 +332,7 @@ void stream(void) {
     //First, shuffle all the current colors down one spot on the strip
     for(x = (STRIP_LENGTH - 1) ; x > 0 ; x--)
       strip_colors[x] = strip_colors[x - 1];
-      
-    //Now form a new RGB color
-    long new_color = 0xFF0000;
+
   
     long color = random(0,2)? orange : pink;
     
@@ -333,9 +357,7 @@ void blinkstream(void) {
     //First, shuffle all the current colors down one spot on the strip
     for(x = (STRIP_LENGTH - 1) ; x > 0 ; x--)
       strip_colors[x] = strip_colors[x - 1];
-      
-    //Now form a new RGB color
-    long new_color = 0xFF0000;
+
   
     long color = random(0,2)? orange : pink;
     
