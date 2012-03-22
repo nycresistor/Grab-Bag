@@ -39,9 +39,9 @@
 #include <EEPROM.h>
 
 
-int SDI = 2; //Red wire (not the red 5V wire!)
-int CKI = 3; //Green wire
-int ledPin = 13; //On board LED
+int SDI = 12; //Red wire (not the red 5V wire!)
+int CKI = 13; //Green wire
+
 
 #define STRIP_LENGTH 32 //32 LEDs on this strip
 long strip_colors[STRIP_LENGTH];
@@ -57,7 +57,7 @@ int mode = 0;
 void setup() {
   pinMode(SDI, OUTPUT);
   pinMode(CKI, OUTPUT);
-  pinMode(ledPin, OUTPUT);
+
   
   //Clear out the array
   for(int x = 0 ; x < STRIP_LENGTH ; x++)
@@ -80,19 +80,21 @@ void setup() {
     white = (white >> 1) & 0x7f7f7f;
     blue = (blue >> 1) & 0x7f7f7f;
     red = (red >>1 ) & 0x7f7f7f;
+    white = (white >> 1) & 0x7f7f7f;
+    blue = (blue >> 1) & 0x7f7f7f;
+    red = (red >>1 ) & 0x7f7f7f;
   }
   
   }
+  
+  Serial.print("Orange: ");
+  Serial.println(orange, HEX);
+  Serial.print("Pink: ");
+  Serial.println(pink, HEX);
+  Serial.print("White: ");
+  Serial.println(white, HEX);
+  
   EEPROM.write(0, modifier + 1);
-  
-
-  
-  
-  orange = (orange >> 1) & 0x7f7f7f;
-  pink = (pink >> 1) & 0x7f7f7f;
-  
-  orange = (orange >> 1) & 0x7f7f7f;
-  pink = (pink >> 1) & 0x7f7f7f;
 }
 
 void loop() {
@@ -200,7 +202,7 @@ void whitestrobe(void) {
  for (int y=0; y < 20; y++) {
 
  
-   setAll(0xFFFFFF);
+   setAll(white);
    post_frame();
    
    delay(5);
