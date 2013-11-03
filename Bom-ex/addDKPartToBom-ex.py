@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 import sys
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 import urllib2
 import re
 
@@ -36,9 +36,7 @@ with open(PARTSDB, 'a') as file:
 	for elem in soup(text=re.compile(r'Manufacturer Part Number')):
 		try:
 			parent = elem.parent.parent.td.meta.attrs
-			for attr in parent:
-				if attr[0] == "content":
-					mfgPartNo = attr[1]
+			mfgPartNo = parent['content']
 		except:
 			pass
 
