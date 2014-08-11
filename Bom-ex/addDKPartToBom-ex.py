@@ -22,8 +22,7 @@ with open(PARTSDB, 'a') as file:
 	# Assume the digikey part number is the first argument
 	partNo = sys.argv[1]
 
-	# There's a more robust way to do this
-	url = DIGIKEY_URL + partNo.replace("/", "%2F").replace("#", "%23")
+	url = DIGIKEY_URL + urllib2.quote(partNo, '')
 
 	# Grab the data!
 	request = urllib2.Request(url)
