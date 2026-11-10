@@ -10,3 +10,20 @@ the clamping screw is competely removed. If you're modifying this in
 the future, consider just making a recess on the inside of the large bore
 for inserting the nut instead.
 
+### Files
+
+* [FreeCAD source file](light_pole_support.FCStd)
+* [Support bracket 3mf](light_pole_support_bracket.3mf)
+* [Snap-on lever for clamping screw 3mf](light_pole_support_lever.3mf)
+
+## Tooltown drawer handle
+
+These are replacement handles for the metal drawers in the back of tooltown
+that lack them. Two M5 bolts and nuts are needed to secure them. Holes will
+need to be drilled in each drawer 100mm apart and 25-30mm from the bottom of
+the drawer.
+
+### Files
+
+* [FreeCAD source file](tooltown-drawer-handle.FCStd)
+
