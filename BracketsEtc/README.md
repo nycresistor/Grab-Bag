@@ -20,8 +20,8 @@ for inserting the nut instead.
 
 These are replacement handles for the metal drawers in the back of tooltown
 that lack them. Two M5 bolts and nuts are needed to secure them. Holes will
-need to be drilled in each drawer 100mm apart and 25-30mm from the bottom of
-the drawer.
+need to be drilled in each drawer 120mm apart and 25-30mm from the bottom of
+the drawer. The holes should be clearance holes for an M5 bolt, which means 5.5mm in diameter (or a bit larger).
 
 ### Files
 
