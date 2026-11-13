@@ -29,3 +29,16 @@ the drawer. The holes should be clearance holes for an M5 bolt, which means 5.5m
 * [Drawer handle 3mf, 5 handles](tooltown-drawer-handle-5x.3mf)
 
 
+## Tooldown door handles
+
+Big, chonky door handles for the sliding doors to Tool Town, which are
+always a bit of a pain to open or close. Both handles are designed from the
+same base object, so they can be printed out without text.
+
+The printed handles are attached with two 2" long 1/4" bolts each.
+
+### Files
+
+* [FreeCAD source file](tooltown_door_handles.FCstd)
+* ["TOOL" handle 3mf](tooltown_door_handles-TOOL%20handle.3mf)
+* ["TOWN" handle 3mf](tooltown_door_handles-TOWN%20handle.3mf)
